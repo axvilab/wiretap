@@ -31,3 +31,4 @@ mysql-data/
 # Env
 .env
 .env.local
+/.playwright-mcp/

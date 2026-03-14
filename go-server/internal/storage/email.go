@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -21,10 +22,10 @@ func (s *Store) SaveEmail(e *Email) error {
 	attachJSON, _ := json.Marshal(e.Attachments)
 
 	_, err := s.db.Exec(`
-		INSERT INTO emails (id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, raw_size, raw_body, trace_rid, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO emails (id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, trace_rid, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.From, string(toJSON), string(ccJSON), e.Subject,
-		e.HTML, e.Text, string(attachJSON), e.RawSize, e.RawBody, e.TraceRID, e.CreatedAt,
+		e.HTML, e.Text, string(attachJSON), e.TraceRID, e.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert email: %w", err)
@@ -45,7 +46,7 @@ func (s *Store) ListEmails(page, perPage int) ([]Email, int, error) {
 
 	offset := (page - 1) * perPage
 	rows, err := s.db.Query(
-		`SELECT id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, raw_size, trace_rid, created_at
+		`SELECT id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, trace_rid, created_at
 		FROM emails ORDER BY created_at DESC LIMIT ? OFFSET ?`, perPage, offset,
 	)
 	if err != nil {
@@ -57,7 +58,7 @@ func (s *Store) ListEmails(page, perPage int) ([]Email, int, error) {
 	for rows.Next() {
 		var e Email
 		var toJSON, ccJSON, attachJSON string
-		err := rows.Scan(&e.ID, &e.From, &toJSON, &ccJSON, &e.Subject, &e.HTML, &e.Text, &attachJSON, &e.RawSize, &e.TraceRID, &e.CreatedAt)
+		err := rows.Scan(&e.ID, &e.From, &toJSON, &ccJSON, &e.Subject, &e.HTML, &e.Text, &attachJSON, &e.TraceRID, &e.CreatedAt)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -76,9 +77,9 @@ func (s *Store) GetEmail(id string) (*Email, error) {
 	var e Email
 	var toJSON, ccJSON, attachJSON string
 	err := s.db.QueryRow(
-		`SELECT id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, raw_size, trace_rid, created_at
+		`SELECT id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, trace_rid, created_at
 		FROM emails WHERE id = ?`, id,
-	).Scan(&e.ID, &e.From, &toJSON, &ccJSON, &e.Subject, &e.HTML, &e.Text, &attachJSON, &e.RawSize, &e.TraceRID, &e.CreatedAt)
+	).Scan(&e.ID, &e.From, &toJSON, &ccJSON, &e.Subject, &e.HTML, &e.Text, &attachJSON, &e.TraceRID, &e.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +89,30 @@ func (s *Store) GetEmail(id string) (*Email, error) {
 	return &e, nil
 }
 
-func (s *Store) GetEmailRaw(id string) ([]byte, error) {
-	var raw []byte
-	err := s.db.QueryRow("SELECT raw_body FROM emails WHERE id = ?", id).Scan(&raw)
-	return raw, err
+func (s *Store) GetEmailAttachment(emailID string, index int) (*EmailAttachment, error) {
+	var attachJSON string
+	err := s.db.QueryRow("SELECT attachments_json FROM emails WHERE id = ?", emailID).Scan(&attachJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var attachments []EmailAttachment
+	json.Unmarshal([]byte(attachJSON), &attachments)
+
+	if index >= len(attachments) {
+		return nil, fmt.Errorf("attachment index out of range")
+	}
+
+	att := &attachments[index]
+	if att.ContentBase64 != "" {
+		decoded, err := base64Decode(att.ContentBase64)
+		if err == nil {
+			att.Content = decoded
+		}
+	}
+	return att, nil
+}
+
+func base64Decode(s string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(s)
 }

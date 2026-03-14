@@ -225,7 +225,7 @@ class WiretapServiceProvider extends ServiceProvider
             if (Wiretap::$rid === '') return;
             $msg = $event->message;
             Wiretap::send('mail.sending', [
-                'to' => array_keys($msg->getTo()),
+                'to' => array_map(fn ($a) => $a->getAddress(), $msg->getTo()),
                 'subject' => $msg->getSubject(),
             ]);
         });
@@ -233,9 +233,51 @@ class WiretapServiceProvider extends ServiceProvider
         Event::listen(MessageSent::class, function (MessageSent $event) {
             if (Wiretap::$rid === '') return;
             $msg = $event->message;
+
+            // Extract full email content for Wiretap mail viewer
+            $html = '';
+            $text = '';
+            if ($msg->getBody() instanceof \Symfony\Component\Mime\Part\AbstractMultipartPart) {
+                foreach ($msg->getBody()->getParts() as $part) {
+                    if ($part instanceof \Symfony\Component\Mime\Part\TextPart) {
+                        if ($part->getMediaSubtype() === 'html') {
+                            $html = $part->getBody();
+                        } else {
+                            $text = $part->getBody();
+                        }
+                    }
+                }
+            } elseif ($msg->getBody() instanceof \Symfony\Component\Mime\Part\TextPart) {
+                $body = $msg->getBody();
+                if ($body->getMediaSubtype() === 'html') {
+                    $html = $body->getBody();
+                } else {
+                    $text = $body->getBody();
+                }
+            }
+
+            // Extract attachments metadata
+            $attachments = [];
+            if (method_exists($msg, 'getAttachments')) {
+                foreach ($msg->getAttachments() as $i => $att) {
+                    $attachments[] = [
+                        'index' => $i,
+                        'name' => $att->getFilename() ?? 'attachment',
+                        'content_type' => $att->getContentType(),
+                        'size' => strlen($att->getBody()),
+                        'content_base64' => base64_encode($att->getBody()),
+                    ];
+                }
+            }
+
             Wiretap::send('mail.sent', [
-                'to' => array_keys($msg->getTo()),
+                'to' => array_map(fn ($a) => $a->getAddress(), $msg->getTo()),
+                'cc' => array_map(fn ($a) => $a->getAddress(), $msg->getCc()),
+                'from' => $msg->getFrom()[0]?->getAddress() ?? '',
                 'subject' => $msg->getSubject(),
+                'html' => $html,
+                'text' => $text,
+                'attachments' => $attachments,
             ]);
         });
     }

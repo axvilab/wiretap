@@ -33,7 +33,6 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r.Get("/api/mail", h.listMail)
 	r.Get("/api/mail/{id}", h.getMail)
 	r.Get("/api/mail/{id}/attachment", h.downloadAttachment)
-	r.Get("/api/mail/{id}/raw", h.downloadRaw)
 	r.Get("/api/ws", wsHub.HandleWS)
 
 	// Serve embedded frontend (prod) — fallback to index.html for SPA

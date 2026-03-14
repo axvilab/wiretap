@@ -65,8 +65,9 @@ func (bw *BatchWriter) flush() {
 	}
 	log.Printf("[batch] flushed %d traces", len(bw.buf))
 
-	// Post-save: correlate jobs and run analyzer
+	// Post-save: extract emails, correlate jobs, run analyzer
 	for _, p := range bw.buf {
+		bw.store.ExtractEmails(p)
 		bw.correlator.ProcessTrace(p)
 
 		trace, err := bw.store.GetTrace(p.RID)

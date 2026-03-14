@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 func (s *Store) SaveTrace(p *TracePayload) error {
@@ -97,6 +98,46 @@ func (s *Store) SaveTraceBatch(payloads []*TracePayload) error {
 	}
 
 	return tx.Commit()
+}
+
+// ExtractEmails saves any mail.sent events as Email records.
+// Must be called after the batch transaction is committed.
+func (s *Store) ExtractEmails(p *TracePayload) {
+	for _, ev := range p.Events {
+		if ev.Type == "mail.sent" {
+			if err := s.saveEmailFromEvent(p.RID, ev, p.TsStart); err != nil {
+				log.Printf("[storage] failed to save email from trace %s: %v", p.RID, err)
+			}
+		}
+	}
+}
+
+func (s *Store) saveEmailFromEvent(traceRID string, ev Event, ts float64) error {
+	var data struct {
+		From        string `json:"from"`
+		To          []string `json:"to"`
+		Cc          []string `json:"cc"`
+		Subject     string `json:"subject"`
+		HTML        string `json:"html"`
+		Text        string `json:"text"`
+		Attachments []EmailAttachment `json:"attachments"`
+	}
+	if err := json.Unmarshal(ev.Data, &data); err != nil {
+		return fmt.Errorf("unmarshal mail.sent: %w", err)
+	}
+
+	email := &Email{
+		From:        data.From,
+		To:          data.To,
+		Cc:          data.Cc,
+		Subject:     data.Subject,
+		HTML:        data.HTML,
+		Text:        data.Text,
+		Attachments: data.Attachments,
+		TraceRID:    traceRID,
+		CreatedAt:   ts,
+	}
+	return s.SaveEmail(email)
 }
 
 func (s *Store) saveJobLink(parentRID string, ev Event, ts float64) error {

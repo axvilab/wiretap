@@ -76,13 +76,6 @@ async function downloadFile(url: string, filename: string) {
         </div>
       </div>
 
-      <!-- Raw email download -->
-      <div class="flex gap-2">
-        <button
-          @click="downloadFile(`/api/mail/${email.id}/raw`, `${email.subject.replace(/[^a-zA-Z0-9]/g, '_')}.eml`)"
-          class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 transition-colors cursor-pointer"
-        >Download .eml</button>
-      </div>
     </template>
   </div>
 </template>

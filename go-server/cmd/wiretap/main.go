@@ -71,7 +71,7 @@ func main() {
 	}()
 
 	go func() {
-		if err := wiretapsmtp.StartSMTPServer(":"+cfg.SMTPPort, store); err != nil {
+		if err := wiretapsmtp.StartSMTPServer(":" + cfg.SMTPPort); err != nil {
 			log.Fatalf("smtp server: %v", err)
 		}
 	}()
