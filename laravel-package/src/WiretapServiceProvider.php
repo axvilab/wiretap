@@ -79,6 +79,7 @@ class WiretapServiceProvider extends ServiceProvider
         $this->registerGateListener();
         $this->registerVarDumper();
         $this->registerValidationListener();
+        $this->registerBroadcastListener();
     }
 
     protected function registerQueryListener(): void
@@ -164,10 +165,25 @@ class WiretapServiceProvider extends ServiceProvider
                 return;
             }
             $job = $event->job;
+
+            // Laravel 11+: $event->payload()['uuid'], older: $job->uuid
+            $uuid = '';
+            if (method_exists($event, 'payload')) {
+                $payload = $event->payload();
+                $uuid = $payload['uuid'] ?? '';
+            }
+            if ($uuid === '' && is_object($job)) {
+                $uuid = $job->uuid ?? ($job->uniqueId ?? '');
+            }
+            if ($uuid === '' && property_exists($event, 'connectionName')) {
+                // Fallback: try to get from the job's serialized data
+                $uuid = data_get($job, 'uuid', '');
+            }
+
             Wiretap::send('job.queued', [
-                'job_uuid' => method_exists($job, 'uniqueId') ? $job->uniqueId() : ($job->uuid ?? ''),
-                'job_class' => get_class($job),
-                'queue' => $job->queue ?? 'default',
+                'job_uuid' => $uuid,
+                'job_class' => is_object($job) ? get_class($job) : (string) $job,
+                'queue' => is_object($job) ? ($job->queue ?? 'default') : 'default',
             ]);
         });
     }
@@ -418,6 +434,24 @@ class WiretapServiceProvider extends ServiceProvider
                     'rules' => array_keys($validator->getRules()),
                 ]);
             });
+        });
+    }
+
+    protected function registerBroadcastListener(): void
+    {
+        Event::listen(\Illuminate\Broadcasting\BroadcastEvent::class, function ($event) {
+            if (Wiretap::$rid === '') return;
+
+            $original = $event->event;
+            $channels = method_exists($original, 'broadcastOn')
+                ? collect($original->broadcastOn())->map(fn ($ch) => is_string($ch) ? $ch : $ch->name)->all()
+                : [];
+
+            Wiretap::send('broadcast', [
+                'event' => get_class($original),
+                'channels' => $channels,
+                'payload' => method_exists($original, 'broadcastWith') ? $original->broadcastWith() : [],
+            ]);
         });
     }
 }

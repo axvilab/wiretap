@@ -9,6 +9,16 @@ const showHtml = ref(true)
 onMounted(async () => {
   email.value = await api.mailDetail(props.id)
 })
+
+async function downloadFile(url: string, filename: string) {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 </script>
 
 <template>
@@ -52,10 +62,26 @@ onMounted(async () => {
 
       <!-- Attachments -->
       <div v-if="email.attachments?.length" class="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <h3 class="text-sm font-semibold mb-2">Attachments</h3>
-        <div v-for="a in email.attachments" :key="a.name" class="text-sm text-zinc-400">
-          {{ a.name }} ({{ a.content_type }}, {{ (a.size / 1024).toFixed(1) }}KB)
+        <h3 class="text-sm font-semibold mb-2">Attachments ({{ email.attachments.length }})</h3>
+        <div v-for="a in email.attachments" :key="a.index" class="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0">
+          <div class="text-sm">
+            <span class="text-zinc-200">{{ a.name }}</span>
+            <span class="text-zinc-500 ml-2">{{ a.content_type }}</span>
+            <span class="text-zinc-600 ml-2">{{ (a.size / 1024).toFixed(1) }}KB</span>
+          </div>
+          <button
+            @click="downloadFile(`/api/mail/${email.id}/attachment?index=${a.index}`, a.name)"
+            class="px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-300 transition-colors cursor-pointer"
+          >Download</button>
         </div>
+      </div>
+
+      <!-- Raw email download -->
+      <div class="flex gap-2">
+        <button
+          @click="downloadFile(`/api/mail/${email.id}/raw`, `${email.subject.replace(/[^a-zA-Z0-9]/g, '_')}.eml`)"
+          class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 transition-colors cursor-pointer"
+        >Download .eml</button>
       </div>
     </template>
   </div>

@@ -29,6 +29,24 @@ Route::get('/slow', function () {
     return response()->json(['slow' => true, 'result' => $result]);
 });
 
+// Order — dispatches job chain: ProcessOrder → UpdateInventory + email
+Route::post('/orders', function () {
+    $orderId = rand(1000, 9999);
+    DB::select('SELECT 1 as id, ? as total', [rand(10, 500)]);
+    \App\Jobs\ProcessOrder::dispatch($orderId);
+    return response()->json(['order_id' => $orderId, 'status' => 'processing']);
+});
+
+// N+1 problem (intentional)
+Route::get('/posts-n-plus-one', function () {
+    // Simulate N+1: 1 query for posts + N queries for each post's author
+    $posts = DB::select('SELECT 1 as id, "Post" as title');
+    foreach (range(1, 5) as $i) {
+        DB::select('SELECT ? as id, "Author" as name', [$i]);
+    }
+    return response()->json(['posts' => $posts]);
+});
+
 // Health
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);

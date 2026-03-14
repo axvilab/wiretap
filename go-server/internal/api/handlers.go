@@ -1,14 +1,17 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/axvi/wiretap/internal/correlator"
 	"github.com/axvi/wiretap/internal/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/jhillyerd/enmime"
 )
 
 type handlers struct {
@@ -84,6 +87,59 @@ func (h *handlers) getMail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, email)
+}
+
+func (h *handlers) downloadAttachment(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	idx := intParam(r, "index", -1)
+	if idx < 0 {
+		http.Error(w, "index is required", http.StatusBadRequest)
+		return
+	}
+
+	raw, err := h.store.GetEmailRaw(id)
+	if err == sql.ErrNoRows {
+		http.Error(w, "email not found", http.StatusNotFound)
+		return
+	}
+	if err != nil || raw == nil {
+		http.Error(w, "raw email not available", http.StatusNotFound)
+		return
+	}
+
+	env, err := enmime.ReadEnvelope(bytes.NewReader(raw))
+	if err != nil {
+		http.Error(w, "failed to parse email", http.StatusInternalServerError)
+		return
+	}
+
+	if idx >= len(env.Attachments) {
+		http.Error(w, "attachment not found", http.StatusNotFound)
+		return
+	}
+
+	att := env.Attachments[idx]
+	w.Header().Set("Content-Type", att.ContentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, att.FileName))
+	w.Header().Set("Content-Length", strconv.Itoa(len(att.Content)))
+	w.Write(att.Content)
+}
+
+func (h *handlers) downloadRaw(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	raw, err := h.store.GetEmailRaw(id)
+	if err == sql.ErrNoRows {
+		http.Error(w, "email not found", http.StatusNotFound)
+		return
+	}
+	if err != nil || raw == nil {
+		http.Error(w, "raw email not available", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "message/rfc822")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.eml"`, id))
+	w.Write(raw)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

@@ -14,6 +14,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
+      '/api/ws': {
+        target: 'ws://wiretap-go:8080',
+        ws: true,
+      },
       '/api': {
         target: 'http://wiretap-go:8080',
         changeOrigin: true,

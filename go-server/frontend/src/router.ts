@@ -7,6 +7,8 @@ import Exceptions from './pages/Exceptions.vue'
 import Jobs from './pages/Jobs.vue'
 import Mail from './pages/Mail.vue'
 import MailDetail from './pages/MailDetail.vue'
+import Broadcasts from './pages/Broadcasts.vue'
+import Settings from './pages/Settings.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -18,5 +20,7 @@ export const router = createRouter({
     { path: '/jobs', component: Jobs },
     { path: '/mail', component: Mail },
     { path: '/mail/:id', component: MailDetail, props: true },
+    { path: '/broadcasts', component: Broadcasts },
+    { path: '/settings', component: Settings },
   ],
 })

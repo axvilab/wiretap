@@ -55,12 +55,14 @@ type Email struct {
 	Text        string            `json:"text"`
 	Attachments []EmailAttachment `json:"attachments"`
 	RawSize     int               `json:"raw_size"`
+	RawBody     []byte            `json:"-"`
 	TraceRID    string            `json:"trace_rid"`
 	CreatedAt   float64           `json:"created_at"`
 }
 
 // EmailAttachment metadata (content not stored in DB).
 type EmailAttachment struct {
+	Index       int    `json:"index"`
 	Name        string `json:"name"`
 	ContentType string `json:"content_type"`
 	Size        int    `json:"size"`

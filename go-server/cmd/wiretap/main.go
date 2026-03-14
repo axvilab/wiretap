@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"io/fs"
 	"log"
 	"net/http"
@@ -14,13 +13,13 @@ import (
 	"github.com/axvi/wiretap/internal/api"
 	"github.com/axvi/wiretap/internal/config"
 	"github.com/axvi/wiretap/internal/correlator"
+	"github.com/axvi/wiretap/internal/hub"
 	"github.com/axvi/wiretap/internal/receiver"
 	wiretapsmtp "github.com/axvi/wiretap/internal/smtp"
 	"github.com/axvi/wiretap/internal/storage"
-)
 
-//go:embed all:../../frontend/dist
-var frontendDist embed.FS
+	wiretap "github.com/axvi/wiretap"
+)
 
 func main() {
 	cfg := config.Load()
@@ -35,12 +34,13 @@ func main() {
 	// Retention
 	store.StartRetention(cfg.RetentionDays)
 
-	// Correlator
+	// Correlator + WebSocket hub
 	corr := correlator.New(store)
+	wsHub := hub.New()
 
 	// Ingest channel + batch writer
 	ingestCh := make(chan *storage.TracePayload, 1000)
-	bw := receiver.NewBatchWriter(store, corr, ingestCh)
+	bw := receiver.NewBatchWriter(store, corr, wsHub, ingestCh)
 	go bw.Run()
 
 	// HTTP receiver
@@ -53,7 +53,7 @@ func main() {
 	}
 	webServer := &http.Server{
 		Addr:    ":" + cfg.WebPort,
-		Handler: api.NewAPIRouter(store, corr, mustSubFS(frontendDist, "frontend/dist")),
+		Handler: api.NewAPIRouter(store, corr, wsHub, mustSubFS(wiretap.FrontendDist, "frontend/dist")),
 	}
 
 	go func() {
@@ -94,7 +94,7 @@ func main() {
 	log.Println("bye")
 }
 
-func mustSubFS(fsys embed.FS, dir string) fs.FS {
+func mustSubFS(fsys fs.FS, dir string) fs.FS {
 	sub, err := fs.Sub(fsys, dir)
 	if err != nil {
 		return nil

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity } from 'lucide-vue-next'
+import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings } from 'lucide-vue-next'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -8,6 +8,8 @@ const nav = [
   { to: '/exceptions', label: 'Exceptions', icon: Bug },
   { to: '/jobs', label: 'Jobs', icon: Briefcase },
   { to: '/mail', label: 'Mail', icon: Mail },
+  { to: '/broadcasts', label: 'Broadcasts', icon: Podcast },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 </script>
 

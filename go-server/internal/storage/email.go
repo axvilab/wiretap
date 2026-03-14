@@ -21,10 +21,10 @@ func (s *Store) SaveEmail(e *Email) error {
 	attachJSON, _ := json.Marshal(e.Attachments)
 
 	_, err := s.db.Exec(`
-		INSERT INTO emails (id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, raw_size, trace_rid, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO emails (id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, raw_size, raw_body, trace_rid, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.From, string(toJSON), string(ccJSON), e.Subject,
-		e.HTML, e.Text, string(attachJSON), e.RawSize, e.TraceRID, e.CreatedAt,
+		e.HTML, e.Text, string(attachJSON), e.RawSize, e.RawBody, e.TraceRID, e.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert email: %w", err)
@@ -86,4 +86,10 @@ func (s *Store) GetEmail(id string) (*Email, error) {
 	json.Unmarshal([]byte(ccJSON), &e.Cc)
 	json.Unmarshal([]byte(attachJSON), &e.Attachments)
 	return &e, nil
+}
+
+func (s *Store) GetEmailRaw(id string) ([]byte, error) {
+	var raw []byte
+	err := s.db.QueryRow("SELECT raw_body FROM emails WHERE id = ?", id).Scan(&raw)
+	return raw, err
 }

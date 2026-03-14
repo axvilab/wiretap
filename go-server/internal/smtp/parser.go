@@ -15,8 +15,9 @@ func ParseEmail(raw []byte, from string, to []string) (*storage.Email, error) {
 	}
 
 	var attachments []storage.EmailAttachment
-	for _, a := range env.Attachments {
+	for i, a := range env.Attachments {
 		attachments = append(attachments, storage.EmailAttachment{
+			Index:       i,
 			Name:        a.FileName,
 			ContentType: a.ContentType,
 			Size:        len(a.Content),
@@ -39,5 +40,6 @@ func ParseEmail(raw []byte, from string, to []string) (*storage.Email, error) {
 		Text:        env.Text,
 		Attachments: attachments,
 		RawSize:     len(raw),
+		RawBody:     raw,
 	}, nil
 }

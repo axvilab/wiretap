@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/axvi/wiretap/internal/correlator"
+	"github.com/axvi/wiretap/internal/hub"
 	"github.com/axvi/wiretap/internal/receiver"
 	"github.com/axvi/wiretap/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -19,7 +20,7 @@ func NewIngestRouter(recv *receiver.HTTPReceiver) http.Handler {
 	return r
 }
 
-func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, frontendFS ...fs.FS) http.Handler {
+func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.Hub, frontendFS ...fs.FS) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
@@ -31,6 +32,9 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, frontendFS 
 	r.Get("/api/trace/{rid}", h.getTrace)
 	r.Get("/api/mail", h.listMail)
 	r.Get("/api/mail/{id}", h.getMail)
+	r.Get("/api/mail/{id}/attachment", h.downloadAttachment)
+	r.Get("/api/mail/{id}/raw", h.downloadRaw)
+	r.Get("/api/ws", wsHub.HandleWS)
 
 	// Serve embedded frontend (prod) — fallback to index.html for SPA
 	if len(frontendFS) > 0 && frontendFS[0] != nil {

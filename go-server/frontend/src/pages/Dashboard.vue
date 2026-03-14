@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api, type Trace } from '@/api'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import StatusBadge from '@/components/StatusBadge.vue'
 import MethodBadge from '@/components/MethodBadge.vue'
 import WarningIcons from '@/components/WarningIcons.vue'
@@ -9,6 +10,17 @@ import { Activity, Database, Bug, Mail } from 'lucide-vue-next'
 const recent = ref<Trace[]>([])
 const stats = ref({ total: 0, exceptions: 0, avgDuration: 0 })
 const mailCount = ref(0)
+
+useWebSocket((event) => {
+  if (event.type === 'trace.new' && event.data) {
+    recent.value = [event.data, ...recent.value].slice(0, 10)
+    stats.value.total++
+    if (event.data.has_exception) stats.value.exceptions++
+  }
+  if (event.type === 'email.new') {
+    mailCount.value++
+  }
+})
 
 onMounted(async () => {
   const [reqData, mailData] = await Promise.all([

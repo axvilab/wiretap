@@ -44,6 +44,7 @@ func (s *Store) migrate() error {
 			text_body       VARCHAR DEFAULT '',
 			attachments_json VARCHAR DEFAULT '[]',
 			raw_size        INTEGER DEFAULT 0,
+			raw_body        BLOB,
 			trace_rid       VARCHAR DEFAULT '',
 			created_at      DOUBLE NOT NULL
 		)`,
@@ -53,5 +54,14 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+
+	// Incremental migrations
+	alters := []string{
+		"ALTER TABLE emails ADD COLUMN IF NOT EXISTS raw_body BLOB",
+	}
+	for _, stmt := range alters {
+		s.db.Exec(stmt) // ignore errors — column may already exist
+	}
+
 	return nil
 }

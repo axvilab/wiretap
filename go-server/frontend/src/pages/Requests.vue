@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { api, type Trace } from '@/api'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import StatusBadge from '@/components/StatusBadge.vue'
 import MethodBadge from '@/components/MethodBadge.vue'
 import WarningIcons from '@/components/WarningIcons.vue'
@@ -11,6 +12,13 @@ const page = ref(1)
 const perPage = 50
 const methodFilter = ref('')
 const typeFilter = ref('')
+
+useWebSocket((event) => {
+  if (event.type === 'trace.new' && event.data && page.value === 1) {
+    traces.value = [event.data, ...traces.value].slice(0, perPage)
+    total.value++
+  }
+})
 
 async function load() {
   const params = new URLSearchParams({ page: String(page.value), per_page: String(perPage) })
@@ -29,6 +37,10 @@ function timeAgo(ts: number): string {
   if (diff < 60) return `${Math.floor(diff)}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   return `${Math.floor(diff / 3600)}h ago`
+}
+
+function parseMeta(t: Trace) {
+  try { return JSON.parse(t.meta_json) } catch { return {} }
 }
 
 const totalPages = () => Math.ceil(total.value / perPage)
@@ -78,7 +90,7 @@ const totalPages = () => Math.ceil(total.value / perPage)
               <span :class="t.type === 'job' ? 'text-purple-400' : 'text-sky-400'">{{ t.type }}</span>
             </td>
             <td class="px-4 py-2"><MethodBadge v-if="t.method" :method="t.method" /></td>
-            <td class="px-4 py-2 font-mono text-xs truncate max-w-sm">{{ t.uri || t.meta_json }}</td>
+            <td class="px-4 py-2 font-mono text-xs truncate max-w-sm">{{ t.uri || parseMeta(t).job_class || parseMeta(t).command || '' }}</td>
             <td class="px-4 py-2"><StatusBadge v-if="t.status" :status="t.status" /></td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.duration_ms.toFixed(1) }}ms</td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.query_count }}</td>

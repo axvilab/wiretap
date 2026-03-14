@@ -1446,6 +1446,32 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 
 ---
 
+## TODO
+
+### Next session
+- [ ] Установить Laravel Reverb в test-app
+- [ ] Создать ShouldBroadcast event в test-app
+- [ ] Проверить что Wiretap перехватывает broadcasts и показывает на странице Broadcasts
+- [ ] Продолжить по плану: тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
+
+### Done (2026-03-14)
+- [x] Phase 0: Docker-first dev environment (docker-compose, air, Makefile)
+- [x] Phase 1A: Go ingest server + DuckDB storage + batch writer + API
+- [x] Phase 1B: PHP package (middleware, listeners, HttpDriver) + test-app
+- [x] Phase 2A: All PHP listeners (queries, exceptions, jobs, cache, mail, notifications, HTTP client, transactions, auth, artisan, schedule, gate, vardumper, validation, broadcasts)
+- [x] Phase 2B: Go correlator (job linking, trace tree builder)
+- [x] Phase 2C: Go analyzer (N+1, duplicate query, slow query detection)
+- [x] Phase 3: SMTP server (go-smtp + enmime, email parsing, raw storage, attachment download)
+- [x] Phase 4: Vue UI (Dashboard, Requests, Trace detail, Exceptions, Jobs, Mail viewer, Broadcasts, Settings)
+- [x] Phase 4J: WebSocket real-time updates
+- [x] Phase 5: Config, retention, prod Dockerfile with go:embed, graceful shutdown
+- [x] Phase 6: PHP package polish (Redis driver, all collectors, config flags)
+- [x] Mail viewer: HTML preview in iframe, HTML/Text toggle, attachment download, raw .eml download
+- [x] Job correlation: request → ProcessOrder child trace verified
+- [x] N+1 detection: warning flags + messages working
+
+---
+
 ## Universal Architecture
 
 The Go server is framework-agnostic by design. It accepts a standard JSON event format.

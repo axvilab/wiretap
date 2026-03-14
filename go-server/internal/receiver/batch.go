@@ -6,6 +6,7 @@ import (
 
 	"github.com/axvi/wiretap/internal/analyzer"
 	"github.com/axvi/wiretap/internal/correlator"
+	"github.com/axvi/wiretap/internal/hub"
 	"github.com/axvi/wiretap/internal/storage"
 )
 
@@ -17,15 +18,17 @@ const (
 type BatchWriter struct {
 	store      *storage.Store
 	correlator *correlator.Correlator
+	hub        *hub.Hub
 	ch         <-chan *storage.TracePayload
 	buf        []*storage.TracePayload
 	ticker     *time.Ticker
 }
 
-func NewBatchWriter(store *storage.Store, corr *correlator.Correlator, ch <-chan *storage.TracePayload) *BatchWriter {
+func NewBatchWriter(store *storage.Store, corr *correlator.Correlator, h *hub.Hub, ch <-chan *storage.TracePayload) *BatchWriter {
 	return &BatchWriter{
 		store:      store,
 		correlator: corr,
+		hub:        h,
 		ch:         ch,
 		buf:        make([]*storage.TracePayload, 0, batchSize),
 		ticker:     time.NewTicker(flushInterval),
@@ -73,7 +76,11 @@ func (bw *BatchWriter) flush() {
 		warnings := analyzer.Analyze(trace)
 		if len(warnings) > 0 {
 			bw.store.UpdateWarnings(p.RID, warnings)
+			trace, _ = bw.store.GetTrace(p.RID) // reload with warnings
 		}
+
+		// Broadcast to WebSocket clients
+		bw.hub.Broadcast("trace.new", trace)
 	}
 
 	bw.buf = bw.buf[:0]
