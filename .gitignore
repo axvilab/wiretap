@@ -1,0 +1,33 @@
+# Go
+go-server/wiretap
+go-server/tmp/
+*.exe
+
+# Frontend
+go-server/frontend/node_modules/
+go-server/frontend/dist/
+
+# PHP
+laravel-package/vendor/
+test-app/vendor/
+test-app/node_modules/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+mysql-data/
+
+# Env
+.env
+.env.local

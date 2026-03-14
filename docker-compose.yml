@@ -1,0 +1,150 @@
+name: wiretap
+
+services:
+  wiretap:
+    container_name: wiretap-go
+    build:
+      context: ./go-server
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+      - "1025:1025"
+    volumes:
+      - ./go-server:/app
+      - wiretap-go-mod:/go/pkg/mod
+      - wiretap-go-build:/root/.cache/go-build
+      - wiretap-data:/data
+    environment:
+      - WIRETAP_STORAGE_PATH=/data/wiretap.duckdb
+      - WIRETAP_WEB_PORT=8080
+      - WIRETAP_INGEST_PORT=9090
+      - WIRETAP_SMTP_PORT=1025
+    networks:
+      - wiretap-net
+
+  frontend:
+    container_name: wiretap-frontend
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./go-server/frontend:/app
+      - wiretap-node-modules:/app/node_modules
+    depends_on:
+      - wiretap
+    networks:
+      - wiretap-net
+    profiles:
+      - ui
+
+  laravel:
+    container_name: wiretap-laravel
+    build:
+      context: ./test-app
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./test-app:/var/www/html
+      - ./laravel-package:/var/www/packages/wiretap
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=wiretap-mysql
+      - DB_DATABASE=testapp
+      - DB_USERNAME=root
+      - DB_PASSWORD=secret
+      - REDIS_HOST=wiretap-redis
+      - CACHE_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=wiretap-go
+      - MAIL_PORT=1025
+      - MAIL_ENCRYPTION=null
+      - WIRETAP_ENABLED=true
+      - WIRETAP_DRIVER=http
+      - WIRETAP_URL=http://wiretap-go:9090/ingest
+      - BROADCAST_DRIVER=redis
+    depends_on:
+      - mysql
+      - redis
+      - wiretap
+    networks:
+      - wiretap-net
+    profiles:
+      - laravel
+
+  worker:
+    container_name: wiretap-worker
+    build:
+      context: ./test-app
+      dockerfile: Dockerfile
+    command: php artisan queue:work redis --tries=3
+    volumes:
+      - ./test-app:/var/www/html
+      - ./laravel-package:/var/www/packages/wiretap
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=mysql
+      - DB_HOST=wiretap-mysql
+      - DB_DATABASE=testapp
+      - DB_USERNAME=root
+      - DB_PASSWORD=secret
+      - REDIS_HOST=wiretap-redis
+      - QUEUE_CONNECTION=redis
+      - WIRETAP_ENABLED=true
+      - WIRETAP_DRIVER=http
+      - WIRETAP_URL=http://wiretap-go:9090/ingest
+    depends_on:
+      - mysql
+      - redis
+      - wiretap
+    networks:
+      - wiretap-net
+    profiles:
+      - laravel
+
+  mysql:
+    container_name: wiretap-mysql
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: testapp
+    ports:
+      - "3306:3306"
+    volumes:
+      - wiretap-mysql:/var/lib/mysql
+    networks:
+      - wiretap-net
+    profiles:
+      - laravel
+
+  redis:
+    container_name: wiretap-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - wiretap-net
+    profiles:
+      - laravel
+
+networks:
+  wiretap-net:
+    name: wiretap-net
+
+volumes:
+  wiretap-mysql:
+    name: wiretap-mysql
+  wiretap-data:
+    name: wiretap-data
+  wiretap-go-mod:
+    name: wiretap-go-mod
+  wiretap-go-build:
+    name: wiretap-go-build
+  wiretap-node-modules:
+    name: wiretap-node-modules
