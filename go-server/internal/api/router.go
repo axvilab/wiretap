@@ -1,0 +1,74 @@
+package api
+
+import (
+	"io/fs"
+	"net/http"
+
+	"github.com/axvi/wiretap/internal/correlator"
+	"github.com/axvi/wiretap/internal/receiver"
+	"github.com/axvi/wiretap/internal/storage"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
+
+func NewIngestRouter(recv *receiver.HTTPReceiver) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Post("/ingest", recv.Handler())
+	r.Get("/health", healthHandler)
+	return r
+}
+
+func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, frontendFS ...fs.FS) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Use(corsMiddleware)
+
+	h := &handlers{store: store, correlator: corr}
+
+	r.Get("/api/health", healthHandler)
+	r.Get("/api/requests", h.listRequests)
+	r.Get("/api/trace/{rid}", h.getTrace)
+	r.Get("/api/mail", h.listMail)
+	r.Get("/api/mail/{id}", h.getMail)
+
+	// Serve embedded frontend (prod) — fallback to index.html for SPA
+	if len(frontendFS) > 0 && frontendFS[0] != nil {
+		dist := frontendFS[0]
+		fileServer := http.FileServer(http.FS(dist))
+		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+			path := r.URL.Path[1:]
+			if path == "" {
+				path = "index.html"
+			}
+			if f, err := dist.Open(path); err == nil {
+				f.Close()
+				fileServer.ServeHTTP(w, r)
+			} else {
+				// SPA fallback
+				r.URL.Path = "/"
+				fileServer.ServeHTTP(w, r)
+			}
+		})
+	}
+
+	return r
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"healthy"}`))
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
