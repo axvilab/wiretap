@@ -103,6 +103,65 @@ func TestUpdateSettingsThresholds(t *testing.T) {
 	}
 }
 
+func TestUpdateSettingsRetentionDays(t *testing.T) {
+	store := testStore(t)
+	h := &handlers{store: store}
+
+	body := `{"retention_days":"30"}`
+	req := httptest.NewRequest("PUT", "/api/settings", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	h.updateSettings(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	val, _ := store.GetSetting("retention_days")
+	if val != "30" {
+		t.Errorf("expected retention_days=30, got %q", val)
+	}
+}
+
+func TestUpdateSettingsAllAllowedKeys(t *testing.T) {
+	store := testStore(t)
+	h := &handlers{store: store}
+
+	body := `{
+		"app_url":"http://example.com",
+		"replay_secret":"secret",
+		"slow_query_ms":"100",
+		"slow_request_ms":"1000",
+		"ingest_api_key":"key123",
+		"retention_days":"7"
+	}`
+	req := httptest.NewRequest("PUT", "/api/settings", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	h.updateSettings(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	checks := map[string]string{
+		"app_url":         "http://example.com",
+		"replay_secret":   "secret",
+		"slow_query_ms":   "100",
+		"slow_request_ms": "1000",
+		"ingest_api_key":  "key123",
+		"retention_days":  "7",
+	}
+	for key, expected := range checks {
+		val, _ := store.GetSetting(key)
+		if val != expected {
+			t.Errorf("expected %s=%s, got %q", key, expected, val)
+		}
+	}
+}
+
 func TestUpdateSettingsInvalidJSON(t *testing.T) {
 	store := testStore(t)
 	h := &handlers{store: store}

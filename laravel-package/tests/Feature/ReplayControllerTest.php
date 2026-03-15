@@ -3,6 +3,8 @@
 namespace Axvi\Wiretap\Tests\Feature;
 
 use Axvi\Wiretap\Tests\TestCase;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
 
 class ReplayControllerTest extends TestCase
 {
@@ -125,5 +127,112 @@ class ReplayControllerTest extends TestCase
 
         $response->assertStatus(403);
         $response->assertJson(['error' => 'replay secret not configured']);
+    }
+
+    // --- dispatch-job endpoint ---
+
+    public function test_dispatch_job_with_valid_serialized_job(): void
+    {
+        Bus::fake();
+
+        $job = new TestDispatchableJob(42, 'pending');
+        $serialized = base64_encode(serialize($job));
+
+        $response = $this->postJson('/_wiretap/dispatch-job', [
+            'job_serialized' => $serialized,
+        ], ['X-Wiretap-Secret' => 'wt_test_secret']);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertStringContainsString('TestDispatchableJob', $response->json('job_class'));
+    }
+
+    public function test_dispatch_job_with_overrides(): void
+    {
+        Bus::fake();
+
+        $job = new TestDispatchableJob(42, 'pending');
+        $serialized = base64_encode(serialize($job));
+
+        $response = $this->postJson('/_wiretap/dispatch-job', [
+            'job_serialized' => $serialized,
+            'job_payload' => ['status' => 'approved'],
+        ], ['X-Wiretap-Secret' => 'wt_test_secret']);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+    }
+
+    public function test_dispatch_job_with_invalid_serialized_data(): void
+    {
+        $response = $this->postJson('/_wiretap/dispatch-job', [
+            'job_serialized' => base64_encode('not-a-valid-serialized-object'),
+        ], ['X-Wiretap-Secret' => 'wt_test_secret']);
+
+        $response->assertStatus(500);
+        $response->assertJson(['success' => false]);
+        $this->assertNotNull($response->json('error'));
+    }
+
+    // --- FormRequest validation endpoint ---
+
+    public function test_validation_error_returns_422(): void
+    {
+        // Register a test route with validation rules
+        Route::post('/_wiretap_test/validate', function (\Illuminate\Http\Request $request) {
+            $request->validate([
+                'email' => 'required|email',
+                'name' => 'required|string|min:2',
+            ]);
+
+            return response()->json(['success' => true]);
+        })->middleware('web');
+
+        // Send invalid data
+        $response = $this->postJson('/_wiretap_test/validate', [
+            'email' => 'not-an-email',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email', 'name']);
+    }
+
+    public function test_validation_passes_returns_200(): void
+    {
+        Route::post('/_wiretap_test/validate-pass', function (\Illuminate\Http\Request $request) {
+            $request->validate([
+                'email' => 'required|email',
+                'name' => 'required|string|min:2',
+            ]);
+
+            return response()->json(['success' => true]);
+        })->middleware('web');
+
+        $response = $this->postJson('/_wiretap_test/validate-pass', [
+            'email' => 'john@example.com',
+            'name' => 'John',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+    }
+}
+
+class TestDispatchableJob implements \Illuminate\Contracts\Queue\ShouldQueue
+{
+    use \Illuminate\Bus\Queueable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Foundation\Bus\Dispatchable;
+
+    public int $orderId;
+    public string $status;
+
+    public function __construct(int $orderId, string $status)
+    {
+        $this->orderId = $orderId;
+        $this->status = $status;
+    }
+
+    public function handle(): void
+    {
+        // noop
     }
 }

@@ -87,6 +87,18 @@ describe('NewItemsBanner', () => {
     expect(wrapper.text()).toContain('1 new item available')
   })
 
+  it('filters by logsOnly', async () => {
+    const wrapper = mount(NewItemsBanner, { props: { logsOnly: true } })
+
+    simulateTrace('request', { events_json: JSON.stringify([{ type: 'query' }]) })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toBe('')
+
+    simulateTrace('request', { events_json: JSON.stringify([{ type: 'log' }]) })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('1 new item available')
+  })
+
   it('emits refresh and resets on click', async () => {
     const wrapper = mount(NewItemsBanner, { props: { types: ['job'] } })
 

@@ -99,6 +99,52 @@ describe('api.getSettings', () => {
   })
 })
 
+describe('api.updateSettings', () => {
+  it('sends PUT with settings data', async () => {
+    mockFetch.mockReturnValueOnce(jsonResponse({ success: true }))
+    const settings = { app_url: 'http://example.com', replay_secret: 'new_secret' }
+    await api.updateSettings(settings)
+    expect(mockFetch).toHaveBeenCalledWith('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    })
+  })
+
+  it('throws on non-ok response', async () => {
+    mockFetch.mockReturnValueOnce(Promise.resolve({
+      ok: false,
+      status: 422,
+      json: () => Promise.resolve({ error: 'invalid' }),
+    }))
+    await expect(api.updateSettings({ bad: 'data' })).rejects.toThrow('API error: 422')
+  })
+})
+
+describe('api.dispatchJob', () => {
+  it('sends POST to dispatch-job endpoint', async () => {
+    mockFetch.mockReturnValueOnce(jsonResponse({ success: true, job_class: 'App\\Jobs\\SendEmail' }))
+    const payload = { job_serialized: 'serialized_data', job_payload: { user_id: 5 } }
+    const result = await api.dispatchJob(payload)
+    expect(result.success).toBe(true)
+    expect(result.job_class).toBe('App\\Jobs\\SendEmail')
+    expect(mockFetch).toHaveBeenCalledWith('/api/replay/dispatch-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  })
+
+  it('throws with error message from server', async () => {
+    mockFetch.mockReturnValueOnce(Promise.resolve({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'job class not found' }),
+    }))
+    await expect(api.dispatchJob({ job_serialized: 'bad' })).rejects.toThrow('job class not found')
+  })
+})
+
 describe('api error handling', () => {
   it('throws on non-ok response', async () => {
     mockFetch.mockReturnValueOnce(jsonResponse({ error: 'not found' }, 404))

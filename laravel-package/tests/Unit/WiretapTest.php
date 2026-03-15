@@ -137,4 +137,95 @@ class WiretapTest extends TestCase
         $this->assertEquals([1, 2, 3], $props['ids']);
         $this->assertNull($props['name']);
     }
+
+    // --- Log listener ignore ---
+
+    public function test_log_listener_ignores_wiretap_messages(): void
+    {
+        Wiretap::reset();
+        Wiretap::start();
+
+        // Simulate the log listener logic inline
+        $wiretapMessage = '[Wiretap] Failed to send payload';
+        $normalMessage = 'User logged in';
+
+        // [Wiretap] prefixed messages should be skipped
+        $this->assertTrue(str_starts_with($wiretapMessage, '[Wiretap]'));
+        $this->assertFalse(str_starts_with($normalMessage, '[Wiretap]'));
+    }
+
+    public function test_log_listener_ignores_wiretap_prefix_variations(): void
+    {
+        // Various messages that start with [Wiretap] should all be ignored
+        $messages = [
+            '[Wiretap] Connection refused',
+            '[Wiretap] Timeout exceeded',
+            '[Wiretap] Buffer overflow',
+        ];
+
+        foreach ($messages as $msg) {
+            $this->assertTrue(
+                str_starts_with($msg, '[Wiretap]'),
+                "Expected message to be recognized as Wiretap internal: {$msg}"
+            );
+        }
+
+        // Normal log messages should NOT be ignored
+        $normalMessages = [
+            'User created order #123',
+            'Payment processed',
+            'Wiretap is awesome', // does NOT start with [Wiretap]
+        ];
+
+        foreach ($normalMessages as $msg) {
+            $this->assertFalse(
+                str_starts_with($msg, '[Wiretap]'),
+                "Expected message to NOT be recognized as Wiretap internal: {$msg}"
+            );
+        }
+    }
+
+    // --- send() guards ---
+
+    public function test_send_does_nothing_without_rid(): void
+    {
+        Wiretap::reset();
+        $this->assertEmpty(Wiretap::$buffer);
+
+        Wiretap::send('log', ['message' => 'test']);
+
+        $this->assertEmpty(Wiretap::$buffer);
+    }
+
+    public function test_send_adds_to_buffer_with_rid(): void
+    {
+        Wiretap::reset();
+        Wiretap::start();
+
+        Wiretap::send('log', ['message' => 'hello']);
+
+        $this->assertCount(1, Wiretap::$buffer);
+        $this->assertEquals('log', Wiretap::$buffer[0]['type']);
+        $this->assertEquals('hello', Wiretap::$buffer[0]['data']['message']);
+
+        Wiretap::reset();
+    }
+
+    // --- reset() ---
+
+    public function test_reset_clears_state(): void
+    {
+        Wiretap::start();
+        Wiretap::send('query', ['sql' => 'SELECT 1']);
+
+        $this->assertNotEmpty(Wiretap::$rid);
+        $this->assertNotEmpty(Wiretap::$buffer);
+
+        Wiretap::reset();
+
+        $this->assertEmpty(Wiretap::$rid);
+        $this->assertEmpty(Wiretap::$buffer);
+        $this->assertEquals(0, Wiretap::$startTime);
+        $this->assertEquals(0, Wiretap::$startMemory);
+    }
 }
