@@ -537,26 +537,26 @@ class GenerateTraffic extends Command
 
 Tasks:
 ```
-[ ] 0.1  Create monorepo directory structure as described above
-[ ] 0.2  Initialize Go module:
+[x] 0.1  Create monorepo directory structure as described above
+[x] 0.2  Initialize Go module:
          cd go-server && go mod init github.com/axvi/wiretap
-[ ] 0.3  Initialize PHP package:
+[x] 0.3  Initialize PHP package:
          cd laravel-package && composer init --name=axvi/wiretap-laravel
-[ ] 0.4  Create test Laravel app:
+[x] 0.4  Create test Laravel app:
          composer create-project laravel/laravel test-app
-[ ] 0.5  Configure test-app composer.json to use local package:
+[x] 0.5  Configure test-app composer.json to use local package:
          Add to repositories: {"type": "path", "url": "../laravel-package"}
          Then: composer require axvi/wiretap-laravel:@dev
-[ ] 0.6  Create docker-compose.yml as described above
-[ ] 0.7  Create Dockerfiles:
+[x] 0.6  Create docker-compose.yml as described above
+[x] 0.7  Create Dockerfiles:
          - test-app/Dockerfile (PHP 8.3 + extensions + composer)
          - go-server/Dockerfile.dev (Go 1.22 + build-essential + air for hot reload)
          - go-server/Dockerfile (production multi-stage)
-[ ] 0.8  Create root Makefile with all dev commands
-[ ] 0.9  Run `make setup` — verify all containers start
-[ ] 0.10 Verify test-app is accessible at http://localhost:8000
-[ ] 0.11 Create go-server/cmd/wiretap/main.go with minimal "Hello Wiretap" HTTP server
-[ ] 0.12 Verify Go server starts and responds at http://localhost:8080
+[x] 0.8  Create root Makefile with all dev commands
+[x] 0.9  Run `make setup` — verify all containers start
+[x] 0.10 Verify test-app is accessible at http://localhost:8000
+[x] 0.11 Create go-server/cmd/wiretap/main.go with minimal "Hello Wiretap" HTTP server
+[x] 0.12 Verify Go server starts and responds at http://localhost:8080
 ```
 
 Testing:
@@ -576,51 +576,51 @@ Testing:
 
 Tasks:
 ```
-[ ] 1A.1  Define Go data models in internal/storage/models.go:
+[x] 1A.1  Define Go data models in internal/storage/models.go:
           - TracePayload (what PHP sends)
           - Trace (what we store)
           - Event (individual event within trace)
           - JobLink (dispatch→execution mapping)
           
-[ ] 1A.2  Create internal/receiver/http.go:
+[x] 1A.2  Create internal/receiver/http.go:
           - POST /ingest endpoint
           - Parse JSON body into TracePayload struct
           - Log received payload to stdout (for debugging)
           - Return 202 Accepted
           
-[ ] 1A.3  Create internal/storage/duckdb.go:
+[x] 1A.3  Create internal/storage/duckdb.go:
           - Init DuckDB connection
           - Create file at configured path
           
-[ ] 1A.4  Create internal/storage/migrations.go:
+[x] 1A.4  Create internal/storage/migrations.go:
           - Auto-create tables on startup
           - Schema: traces, job_links tables (emails table later)
           
-[ ] 1A.5  Implement storage.SaveTrace():
+[x] 1A.5  Implement storage.SaveTrace():
           - Parse events from JSON
           - Calculate counters (query_count, event_count, etc.)
           - INSERT into traces table
           - If events contain job.queued — INSERT into job_links
           
-[ ] 1A.6  Implement batch writer:
+[x] 1A.6  Implement batch writer:
           - Buffer incoming traces in Go channel
           - Flush to DuckDB every 500ms or when buffer reaches 100 items
           - Single transaction per batch
           
-[ ] 1A.7  Create internal/api/router.go:
+[x] 1A.7  Create internal/api/router.go:
           - Mount ingest on :9090
           - Mount API + UI on :8080
           
-[ ] 1A.8  Create internal/api/requests.go:
+[x] 1A.8  Create internal/api/requests.go:
           - GET /api/requests — list traces from DuckDB
           - Support query params: page, per_page, type, status, method
           - Return JSON with pagination
           
-[ ] 1A.9  Create internal/api/trace.go:
+[x] 1A.9  Create internal/api/trace.go:
           - GET /api/trace/:rid — single trace with events_json parsed
           - Return full trace data as JSON
 
-[ ] 1A.10 Wire everything in main.go:
+[x] 1A.10 Wire everything in main.go:
           - Load config
           - Init DuckDB
           - Run migrations
@@ -649,42 +649,42 @@ curl http://localhost:8080/api/trace/test-001
 
 Tasks:
 ```
-[ ] 1B.1  Create src/Wiretap.php:
+[x] 1B.1  Create src/Wiretap.php:
           - Static $rid property
           - Static $buffer array
           - Static send(string $type, array $data) — appends to buffer
           - Static flush() — encodes buffer to JSON, sends via driver
           - Static reset() — clears buffer (for queue workers between jobs)
           
-[ ] 1B.2  Create src/Contracts/DriverInterface.php:
+[x] 1B.2  Create src/Contracts/DriverInterface.php:
           - send(string $payload): void
           
-[ ] 1B.3  Create src/Drivers/HttpDriver.php:
+[x] 1B.3  Create src/Drivers/HttpDriver.php:
           - Uses curl to POST JSON to configured endpoint
           - Timeout 50ms
           - Silently fails if server unreachable (@ error suppression)
           
-[ ] 1B.4  Create src/WiretapMiddleware.php:
+[x] 1B.4  Create src/WiretapMiddleware.php:
           - handle(): Generate rid = uniqid('r_', true), set Wiretap::$rid
           - handle(): Wiretap::send('request.start', [method, uri, ip])
           - terminate(): Wiretap::send('request.end', [status, duration, memory])
           - terminate(): fastcgi_finish_request() if available
           - terminate(): Wiretap::flush()
           
-[ ] 1B.5  Create src/WiretapServiceProvider.php:
+[x] 1B.5  Create src/WiretapServiceProvider.php:
           - Register: bind DriverInterface to configured driver
           - Boot: push WiretapMiddleware globally
           - Boot: DB::listen → Wiretap::send('query', ...)
           - Boot: register exception handler via reportable()
           
-[ ] 1B.6  Create config/wiretap.php:
+[x] 1B.6  Create config/wiretap.php:
           - enabled, driver, drivers.http.endpoint, collect.* flags
           
-[ ] 1B.7  Configure composer.json:
+[x] 1B.7  Configure composer.json:
           - autoload, extra.laravel.providers for auto-discovery
           
-[ ] 1B.8  Install in test-app: composer require axvi/wiretap-laravel:@dev
-[ ] 1B.9  Create test routes in test-app that trigger queries and exceptions
+[x] 1B.8  Install in test-app: composer require axvi/wiretap-laravel:@dev
+[x] 1B.9  Create test routes in test-app that trigger queries and exceptions
 ```
 
 Testing:
@@ -713,62 +713,62 @@ curl http://localhost:8080/api/trace/{rid-from-above}
 
 Tasks:
 ```
-[ ] 2A.1  Add Event::listen('*') for all application events
+[x] 2A.1  Add Event::listen('*') for all application events
           - Detect ShouldBroadcast for broadcast flag
           - Extract broadcast channels and event name
           - Filter out Illuminate\* events (configurable)
           
-[ ] 2A.2  Add Queue event listeners:
+[x] 2A.2  Add Queue event listeners:
           - Queue::before → send('job.start', {job_uuid, job_class, queue})
           - Queue::after → send('job.end', {job_uuid, status:'ok', duration})
           - Queue::failing → send('job.end', {job_uuid, status:'failed', error})
           - JobQueued event → send('job.queued', {job_uuid, job_class, queue})
           - Reset Wiretap buffer between jobs (Wiretap::$rid = new uniqid for each job)
           
-[ ] 2A.3  Add Cache event listeners:
+[x] 2A.3  Add Cache event listeners:
           - CacheHit → send('cache', {key, hit:true})
           - CacheMissed → send('cache', {key, hit:false})
           - KeyWritten → send('cache.write', {key, ttl})
           - KeyForgotten → send('cache.forget', {key})
           
-[ ] 2A.4  Add Mail tracking:
+[x] 2A.4  Add Mail tracking:
           - MessageSending → send('mail.sending', {to, subject, mailer})
           - MessageSent → send('mail.sent', {to, subject, mailer})
           
-[ ] 2A.5  Add Notification tracking:
+[x] 2A.5  Add Notification tracking:
           - NotificationSending/Sent → send('notification', {channel, class, notifiable})
           
-[ ] 2A.6  Add HTTP Client tracking:
+[x] 2A.6  Add HTTP Client tracking:
           - Http::globalRequestMiddleware() → send('http.out.start', {url, method})
           - Http::globalResponseMiddleware() → send('http.out.end', {url, status, duration})
           
-[ ] 2A.7  Add Auth event listeners:
+[x] 2A.7  Add Auth event listeners:
           - Login, Logout, Failed, Registered events
           
-[ ] 2A.8  Add Artisan command tracking:
+[x] 2A.8  Add Artisan command tracking:
           - CommandStarting, CommandFinished events
           
-[ ] 2A.9  Add Schedule tracking:
+[x] 2A.9  Add Schedule tracking:
           - ScheduledTaskStarting, ScheduledTaskFinished, ScheduledTaskFailed
           
-[ ] 2A.10 Add Gate/Policy tracking:
+[x] 2A.10 Add Gate/Policy tracking:
           - GateEvaluated event (Laravel 10+)
           
-[ ] 2A.11 Add VarDumper intercept:
+[x] 2A.11 Add VarDumper intercept:
           - VarDumper::setHandler → send('dump', {value, file, line})
           - Call original handler too so dump() still works
           
-[ ] 2A.12 Add Validation tracking:
+[x] 2A.12 Add Validation tracking:
           - Catch ValidationException → send('validation', {errors, rules})
           
-[ ] 2A.13 Add Transaction tracking:
+[x] 2A.13 Add Transaction tracking:
           - DB events for begin/commit/rollback
           
-[ ] 2A.14 Add optional request body/headers capture:
+[x] 2A.14 Add optional request body/headers capture:
           - Only if config('wiretap.collect.request_body') is true
           - Apply mask_fields to sanitize PII
 
-[ ] 2A.15 Add optional replay routes (ReplayController):
+[x] 2A.15 Add optional replay routes (ReplayController):
           - POST /_wiretap/replay-request (re-sends HTTP request)
           - POST /_wiretap/retry-job (retries failed job by uuid)
           - POST /_wiretap/replay-broadcast (re-broadcasts event)
@@ -780,24 +780,24 @@ Tasks:
 
 Tasks:
 ```
-[ ] 2B.1  Create internal/correlator/correlator.go:
+[x] 2B.1  Create internal/correlator/correlator.go:
           - ProcessTrace(payload) — called after storage.SaveTrace
           - Check events for 'job.queued' → insert job_links
           - Check if this trace is a job → look up job_links by job_uuid
           - If found → set parent_rid on this trace
 
-[ ] 2B.2  Create internal/correlator/tree.go:
+[x] 2B.2  Create internal/correlator/tree.go:
           - BuildTree(rid) → returns recursive tree structure
           - Load root trace
           - Find all children (traces where parent_rid = root.rid)
           - For each child, recursively find their children
           - Return nested structure
 
-[ ] 2B.3  Update GET /api/trace/:rid:
+[x] 2B.3  Update GET /api/trace/:rid:
           - Use tree.BuildTree() instead of flat trace
           - Return: {trace: {..., events}, children: [{trace, events, children: [...]}]}
           
-[ ] 2B.4  Implement job status tracking:
+[x] 2B.4  Implement job status tracking:
           - When job.start received → UPDATE job_links SET child_rid, started_at, status='processing'
           - When job.end received → UPDATE job_links SET finished_at, status='completed'|'failed'
 ```
@@ -806,27 +806,27 @@ Tasks:
 
 Tasks:
 ```
-[ ] 2C.1  Create internal/analyzer/analyzer.go:
+[x] 2C.1  Create internal/analyzer/analyzer.go:
           - Analyze(trace) → returns []Warning
           - Runs all sub-analyzers on the trace's events
 
-[ ] 2C.2  Create internal/analyzer/n_plus_one.go:
+[x] 2C.2  Create internal/analyzer/n_plus_one.go:
           - Normalize SQL (replace values with ?)
           - Group by normalized SQL
           - If same SELECT appears 3+ times → N+1 warning
           - Include suggestion: "Consider eager loading with ::with()"
 
-[ ] 2C.3  Create internal/analyzer/duplicate.go:
+[x] 2C.3  Create internal/analyzer/duplicate.go:
           - Find exact same SQL + bindings appearing 2+ times
           - Warning: "Duplicate query executed N times, consider caching"
 
-[ ] 2C.4  Create internal/analyzer/slow.go:
+[x] 2C.4  Create internal/analyzer/slow.go:
           - Flag queries > threshold_ms
           - Flag requests > threshold_ms
           - Include the specific slow SQL in warning
 
-[ ] 2C.5  Save warnings in traces.warnings_json
-[ ] 2C.6  Set boolean flags: has_n_plus_one, has_slow_query, has_duplicate_query
+[x] 2C.5  Save warnings in traces.warnings_json
+[x] 2C.6  Set boolean flags: has_n_plus_one, has_slow_query, has_duplicate_query
 ```
 
 Testing:
@@ -874,7 +874,7 @@ curl http://localhost:8080/api/requests?page=1
 
 Tasks:
 ```
-[ ] 3.1  Add go-smtp and enmime to go.mod:
+[x] 3.1  Add go-smtp and enmime to go.mod:
          go get github.com/emersion/go-smtp
          go get github.com/jhillyerd/enmime
 
@@ -892,18 +892,18 @@ Tasks:
          - Parse: from, to, cc, subject, html, text, headers
          - Extract attachments: name, size, content_type, bytes
 
-[ ] 3.5  Add emails table to DuckDB migrations
+[x] 3.5  Add emails table to DuckDB migrations
 
-[ ] 3.6  Implement storage.SaveEmail():
+[x] 3.6  Implement storage.SaveEmail():
          - Insert into emails table
          - Store raw bytes for full fidelity
 
-[ ] 3.7  Create internal/correlator/mail_linker.go:
+[x] 3.7  Create internal/correlator/mail_linker.go:
          - LinkEmailToTrace(email) — runs async after save
          - Match by: to_address + subject + time_window (±5 seconds)
          - If matched: UPDATE emails SET trace_rid = ?
 
-[ ] 3.8  Create internal/api/mail.go:
+[x] 3.8  Create internal/api/mail.go:
          - GET /api/mail — paginated list (from, to, subject, time, has_trace)
          - GET /api/mail/:id — full email metadata
          - GET /api/mail/:id/html — raw HTML body (for iframe rendering)
@@ -912,9 +912,9 @@ Tasks:
          - DELETE /api/mail/:id — delete single email
          - DELETE /api/mail — delete all emails
 
-[ ] 3.9  Wire SMTP server in main.go — start on :1025
+[x] 3.9  Wire SMTP server in main.go — start on :1025
 
-[ ] 3.10 Configure test-app .env: MAIL_HOST=wiretap, MAIL_PORT=1025
+[x] 3.10 Configure test-app .env: MAIL_HOST=wiretap, MAIL_PORT=1025
 ```
 
 Testing:
@@ -962,11 +962,11 @@ curl http://localhost:8080/api/mail/{id}
 
 Tasks:
 ```
-[ ] 4A.1  Initialize Vue project:
+[x] 4A.1  Initialize Vue project:
           cd go-server/frontend
           npm create vite@latest . -- --template vue-ts
           
-[ ] 4A.2  Install dependencies:
+[x] 4A.2  Install dependencies:
           npm install tailwindcss @tailwindcss/vite
           npm install echarts vue-echarts
           npm install vue-router
@@ -974,16 +974,16 @@ Tasks:
           npm install @vueuse/core
           npx shadcn-vue@latest init
 
-[ ] 4A.3  Configure Tailwind
+[x] 4A.3  Configure Tailwind
 
-[ ] 4A.4  Configure Vite proxy for dev:
+[x] 4A.4  Configure Vite proxy for dev:
           // vite.config.ts
           proxy: {
             '/api': 'http://localhost:8080',
             '/ws': { target: 'ws://localhost:8080', ws: true }
           }
           
-[ ] 4A.5  Create layout: sidebar navigation + main content area
+[x] 4A.5  Create layout: sidebar navigation + main content area
           - Navigation items: Dashboard, Requests, Jobs, Exceptions, Mail, Broadcasts, Settings
           - Connection status indicator
           - App name selector (for multi-app, later)
@@ -993,38 +993,38 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4B.1  Create StatsCard component (number + label + trend arrow)
-[ ] 4B.2  Create TimeChart component (vue-echarts area/bar chart)
-[ ] 4B.3  Create Dashboard page:
+[x] 4B.1  Create StatsCard component (number + label + trend arrow)
+[x] 4B.2  Create TimeChart component (vue-echarts area/bar chart)
+[x] 4B.3  Create Dashboard page:
           - 5 stat cards: Requests, Avg Duration, Errors, Jobs, Emails
           - Area chart: Requests per minute
           - Bar chart: Errors per minute
           - Table: Slowest Endpoints (top 10)
           - Table: Recent Exceptions (top 5)
           - Period selector: 1h | 6h | 24h | 7d
-[ ] 4B.4  Create GET /api/dashboard endpoint in Go with DuckDB aggregations
-[ ] 4B.5  Auto-refresh via WebSocket push
+[x] 4B.4  Create GET /api/dashboard endpoint in Go with DuckDB aggregations
+[x] 4B.5  Auto-refresh via WebSocket push
 ```
 
 #### 4C: Requests Page
 
 Tasks:
 ```
-[ ] 4C.1  Create Requests page:
+[x] 4C.1  Create Requests page:
           - Filterable table with columns: Time, Method, URI, Status, Duration, Queries, Jobs, Warnings
           - Filter bar: Status, Method, URI search, Slow threshold, Has exceptions
           - Pagination
           - Color coding: green (2xx), yellow (4xx), red (5xx)
           - Warning icons: ⚠ slow, 🔄 N+1, ❌ exception
           - Click row → navigate to Trace page
-[ ] 4C.2  Create useFilters hook for URL-based filter state
+[x] 4C.2  Create useFilters hook for URL-based filter state
 ```
 
 #### 4D: Trace Page (most important)
 
 Tasks:
 ```
-[ ] 4D.1  Create Waterfall component:
+[x] 4D.1  Create Waterfall component:
           - Vertical timeline of events
           - Each event = row with colored duration bar
           - Colors: blue (query), purple (event), orange (job), green (mail),
@@ -1034,7 +1034,7 @@ Tasks:
           - Indent for child jobs (recursive tree rendering)
           - Click on event → shows detail panel
 
-[ ] 4D.2  Create EventDetail panel (right side):
+[x] 4D.2  Create EventDetail panel (right side):
           - For query: SQL with syntax highlighting, bindings, duration, connection
           - For job: class, queue, uuid, status, duration, error
           - For exception: class, message, file:line, full stack trace
@@ -1046,24 +1046,24 @@ Tasks:
           - For event: name, listeners count
           - For auth: user, guard, success/fail
 
-[ ] 4D.3  Create Warnings panel (bottom):
+[x] 4D.3  Create Warnings panel (bottom):
           - List of analyzer warnings
           - N+1 with affected SQL and suggestion
           - Duplicate queries
           - Slow queries
 
-[ ] 4D.4  Create TraceTree component:
+[x] 4D.4  Create TraceTree component:
           - Renders trace header (method + uri + status + duration)
           - Renders events via Waterfall
           - Recursively renders children (child jobs)
           - Each child has its own header and waterfall
 
-[ ] 4D.5  Add Replay button:
+[x] 4D.5  Add Replay button:
           - "▶ Replay Request" button in header
           - Sends POST to /api/replay/request with original request data
           - Shows success/error notification
 
-[ ] 4D.6  Add linked email display:
+[x] 4D.6  Add linked email display:
           - If trace has linked emails, show "📨 1 email" badge
           - Click → navigate to Mail page with that email
 ```
@@ -1072,7 +1072,7 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4E.1  Create Exceptions page:
+[x] 4E.1  Create Exceptions page:
           - Grouped list of unique exceptions
           - For each: class, message, count, first/last seen, status badge
           - Filters: Status (open/resolved/ignored)
@@ -1080,14 +1080,14 @@ Tasks:
           - Actions: Resolve, Ignore, View latest trace
           - Click → navigates to latest trace with that exception
           
-[ ] 4E.2  Implement PATCH /api/exceptions/:hash in Go
+[x] 4E.2  Implement PATCH /api/exceptions/:hash in Go
 ```
 
 #### 4F: Jobs Page
 
 Tasks:
 ```
-[ ] 4F.1  Create Jobs page:
+[x] 4F.1  Create Jobs page:
           - Stats bar: throughput/min, success rate, failed count
           - Table: Class, Queue, Status, Duration, Dispatched At
           - Filters: Status (completed/failed), Queue name
@@ -1100,7 +1100,7 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4G.1  Create MailViewer component:
+[x] 4G.1  Create MailViewer component:
           - Split view: list (left) + preview (right)
           - List: from, to, subject, time, trace badge
           - Preview tabs: HTML | Text | Source | Headers
@@ -1115,7 +1115,7 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4H.1  Create Broadcasts page:
+[x] 4H.1  Create Broadcasts page:
           - Table: Channel, Event, Time, Trace link
           - Filter by channel pattern
           - Click → payload detail
@@ -1126,7 +1126,7 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4I.1  Create Settings page:
+[x] 4I.1  Create Settings page:
           - Connection status (is PHP sending data? last event time)
           - Storage stats (DuckDB file size, trace count, email count)
           - Retention settings display
@@ -1139,20 +1139,20 @@ Tasks:
 
 Tasks:
 ```
-[ ] 4J.1  Build frontend: cd frontend && npm run build
-[ ] 4J.2  Embed in Go:
+[x] 4J.1  Build frontend: cd frontend && npm run build
+[x] 4J.2  Embed in Go:
           //go:embed frontend/dist/*
           var frontendFS embed.FS
           // Serve from :8080 root
           
-[ ] 4J.3  Implement WebSocket server:
+[x] 4J.3  Implement WebSocket server:
           - internal/api/ws.go
           - On new trace saved → broadcast to all WS clients
           - On new exception → broadcast
           - On new email → broadcast
           - On job failed → broadcast
           
-[ ] 4J.4  Create useWebSocket hook in Vue:
+[x] 4J.4  Create useWebSocket hook in Vue:
           - Connect to ws://host/api/ws
           - On message → update relevant page data
           - Auto-reconnect on disconnect
@@ -1206,17 +1206,17 @@ Tasks:
          
 [ ] 5.3  Config: driver selection (http | redis) in both PHP and Go
 
-[ ] 5.4  Implement retention cleanup:
+[x] 5.4  Implement retention cleanup:
          - Goroutine running every hour
          - DELETE FROM traces WHERE created_at < now() - retention_days
          - DELETE FROM emails WHERE received_at < now() - email_retention_days
          - VACUUM (or DuckDB equivalent for space reclaim)
 
-[ ] 5.5  Add YAML config file support (wiretap.yml)
-[ ] 5.6  Add CLI flags: --config, --web-port, --ingest-port, --smtp-port
-[ ] 5.7  Production Dockerfile (multi-stage, minimal image)
-[ ] 5.8  Add health check endpoint: GET /api/health
-[ ] 5.9  Graceful shutdown: finish batch writes, close DuckDB, close SMTP
+[x] 5.5  Add YAML config file support (wiretap.yml)
+[x] 5.6  Add CLI flags: --config, --web-port, --ingest-port, --smtp-port
+[x] 5.7  Production Dockerfile (multi-stage, minimal image)
+[x] 5.8  Add health check endpoint: GET /api/health
+[x] 5.9  Graceful shutdown: finish batch writes, close DuckDB, close SMTP
 
 [ ] 5.10 Error handling: what happens when DuckDB is full, disk full, etc.
 [ ] 5.11 Logging: structured JSON logs from Go server
@@ -1280,7 +1280,7 @@ Tasks:
          - Go stores per-app
          - UI: app selector dropdown
 
-[ ] 7.2  Auth for dashboard:
+[x] 7.2  Auth for dashboard:
          - Basic auth middleware in Go
          - Configured via wiretap.yml
 
@@ -1443,8 +1443,8 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 ## TODO
 
 ### Next
-- [ ] Replay/retry механизм (2A.15: ReplayController в PHP, кнопки в UI)
-- [ ] Тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
+- [x] Replay/retry механизм (2A.15: ReplayController в PHP, кнопки в UI)
+- [x] Тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
 
 ### Backlog
 - [ ] Протестировать PHP пакет на Laravel 10 и 11 (сейчас тестируем только на 12)
@@ -1539,3 +1539,63 @@ Install:
   docker run -p 8080:8080 -p 9090:9090 -p 1025:1025 axvi/wiretap
   composer require axvi/wiretap-laravel
 ```
+
+---
+
+## Completed Beyond Original Plan
+
+### Authentication & Security
+- [x] Web UI password authentication (bcrypt + persistent sessions in DuckDB)
+- [x] Setup flow (first-launch password creation)
+- [x] Change password in Settings
+- [x] Ingest API key protection (X-Wiretap-Key header)
+- [x] Session persistence across server restarts
+
+### Replay/Retry System
+- [x] Replay Request (Go direct HTTP, no PHP self-call deadlock)
+- [x] Retry Job (queue:retry for failed jobs)
+- [x] Dispatch Job (replay any job from serialized payload with editable properties)
+- [x] Replay Broadcast (via Laravel broadcast driver)
+- [x] Replay Command (Artisan::call)
+- [x] ReplayModal with editable forms for all types
+- [x] php artisan wiretap:replay-secret command
+- [x] Masked field warnings, large payload warnings
+
+### Data Collection Enhancements
+- [x] Gzip compression (PHP drivers → Go receiver)
+- [x] Job payload capture with masking and serialized replay
+- [x] Request body capture with field masking (enabled by default)
+- [x] Log listener (MessageLogged event)
+- [x] Ignore filters for requests, jobs, commands, broadcasts (wildcard patterns)
+- [x] Validation listener fix (via renderable exception handler)
+- [x] FormRequest validation support
+- [x] Laravel connection warning (Log::warning on ingest failure)
+
+### New UI Pages
+- [x] Activity page (root traces only — request, command, schedule)
+- [x] Performance page (Top 10 Slow Endpoints + Top 10 Slow Queries from all trace types)
+- [x] Logs page with level filter + detail page
+- [x] Notifications page with detail page
+- [x] Settings tabs (General, Security, Replay, Info)
+- [x] Configurable analysis thresholds (slow query/request ms)
+- [x] Data retention settings
+
+### UI Improvements
+- [x] NewItemsBanner on all table pages (non-intrusive WebSocket updates)
+- [x] TraceTree: dump collapsible with preview, log truncated with Open, validation collapsible
+- [x] Open buttons on log, exception, notification, broadcast, mail events in trace tree
+- [x] Favicon (SVG)
+- [x] 13 sidebar pages total
+
+### Testing
+- [x] Go tests: 37 (storage, analyzer, receiver gzip, API handlers, auth, sessions, ingest key)
+- [x] PHP tests: 24 (Wiretap unit, ignore filters, ReplayController, GenerateReplaySecret)
+- [x] Vitest: 28 (API layer, NewItemsBanner, ReplayModal)
+
+### Test Application
+- [x] Comprehensive test routes for all 16 listener types
+- [x] TestNotification class
+- [x] CreateOrderRequest FormRequest
+- [x] OrderShipped broadcast event
+- [x] ProcessOrder + UpdateInventory job chain
+- [x] broadcasting.php config with Redis
