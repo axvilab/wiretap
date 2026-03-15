@@ -24,6 +24,7 @@ func (h *handlers) listRequests(w http.ResponseWriter, r *http.Request) {
 		Type:    r.URL.Query().Get("type"),
 		Status:  intParam(r, "status", 0),
 		Method:  r.URL.Query().Get("method"),
+		URI:     r.URL.Query().Get("uri"),
 	}
 
 	result, err := h.store.ListTraces(params)
@@ -71,6 +72,20 @@ func (h *handlers) listMail(w http.ResponseWriter, r *http.Request) {
 		"page":     page,
 		"per_page": perPage,
 	})
+}
+
+func (h *handlers) getMailByTrace(w http.ResponseWriter, r *http.Request) {
+	rid := chi.URLParam(r, "rid")
+	email, err := h.store.GetEmailByTrace(rid)
+	if err == sql.ErrNoRows {
+		http.Error(w, "email not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, email)
 }
 
 func (h *handlers) getMail(w http.ResponseWriter, r *http.Request) {

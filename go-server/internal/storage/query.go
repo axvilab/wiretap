@@ -11,6 +11,7 @@ type ListParams struct {
 	Type    string
 	Status  int
 	Method  string
+	URI     string
 }
 
 type ListResult struct {
@@ -99,8 +100,18 @@ func buildWhere(p ListParams) (string, []any) {
 	var args []any
 
 	if p.Type != "" {
-		conds = append(conds, "type = ?")
-		args = append(args, p.Type)
+		types := strings.Split(p.Type, ",")
+		if len(types) == 1 {
+			conds = append(conds, "type = ?")
+			args = append(args, types[0])
+		} else {
+			placeholders := make([]string, len(types))
+			for i, t := range types {
+				placeholders[i] = "?"
+				args = append(args, strings.TrimSpace(t))
+			}
+			conds = append(conds, "type IN ("+strings.Join(placeholders, ",")+")")
+		}
 	}
 	if p.Status > 0 {
 		conds = append(conds, "status = ?")
@@ -109,6 +120,10 @@ func buildWhere(p ListParams) (string, []any) {
 	if p.Method != "" {
 		conds = append(conds, "method = ?")
 		args = append(args, strings.ToUpper(p.Method))
+	}
+	if p.URI != "" {
+		conds = append(conds, "uri LIKE ?")
+		args = append(args, "%"+p.URI+"%")
 	}
 
 	if len(conds) == 0 {

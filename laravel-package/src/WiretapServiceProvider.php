@@ -481,18 +481,35 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerBroadcastListener(): void
     {
-        Event::listen(\Illuminate\Broadcasting\BroadcastEvent::class, function ($event) {
+        // Listen to all events and catch ShouldBroadcast implementations
+        Event::listen('*', function (string $eventName, array $data) {
             if (Wiretap::$rid === '') return;
 
-            $original = $event->event;
-            $channels = method_exists($original, 'broadcastOn')
-                ? collect($original->broadcastOn())->map(fn ($ch) => is_string($ch) ? $ch : $ch->name)->all()
+            $event = $data[0] ?? null;
+            if (! is_object($event)) return;
+            if (! $event instanceof \Illuminate\Contracts\Broadcasting\ShouldBroadcast) return;
+
+            $rawChannels = method_exists($event, 'broadcastOn')
+                ? (is_array($event->broadcastOn()) ? $event->broadcastOn() : [$event->broadcastOn()])
                 : [];
 
+            $channels = [];
+            foreach ($rawChannels as $ch) {
+                if (is_string($ch)) {
+                    $channels[] = ['name' => $ch, 'type' => 'public'];
+                } elseif ($ch instanceof \Illuminate\Broadcasting\PresenceChannel) {
+                    $channels[] = ['name' => $ch->name, 'type' => 'presence'];
+                } elseif ($ch instanceof \Illuminate\Broadcasting\PrivateChannel) {
+                    $channels[] = ['name' => $ch->name, 'type' => 'private'];
+                } elseif ($ch instanceof \Illuminate\Broadcasting\Channel) {
+                    $channels[] = ['name' => $ch->name, 'type' => 'public'];
+                }
+            }
+
             Wiretap::send('broadcast', [
-                'event' => get_class($original),
+                'event' => get_class($event),
                 'channels' => $channels,
-                'payload' => method_exists($original, 'broadcastWith') ? $original->broadcastWith() : [],
+                'payload' => method_exists($event, 'broadcastWith') ? $event->broadcastWith() : [],
             ]);
         });
     }

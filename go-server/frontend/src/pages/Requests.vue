@@ -1,36 +1,43 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { api, type Trace } from '@/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { TraceType } from '@/constants'
+import Pagination from '@/components/Pagination.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import MethodBadge from '@/components/MethodBadge.vue'
 import WarningIcons from '@/components/WarningIcons.vue'
 
+const route = useRoute()
 const traces = ref<Trace[]>([])
 const total = ref(0)
 const page = ref(1)
-const perPage = 50
+const perPage = ref(25)
 const methodFilter = ref('')
-const typeFilter = ref('')
+const uriFilter = ref((route.query.uri as string) || '')
+const typeFilter = TraceType.REQUEST
 
 useWebSocket((event) => {
-  if (event.type === 'trace.new' && event.data && page.value === 1) {
-    traces.value = [event.data, ...traces.value].slice(0, perPage)
+  if (event.type === 'trace.new' && event.data && event.data.type === TraceType.REQUEST && page.value === 1) {
+    traces.value = [event.data, ...traces.value].slice(0, perPage.value)
     total.value++
   }
 })
 
 async function load() {
-  const params = new URLSearchParams({ page: String(page.value), per_page: String(perPage) })
+  const params = new URLSearchParams({ page: String(page.value), per_page: String(perPage.value) })
   if (methodFilter.value) params.set('method', methodFilter.value)
-  if (typeFilter.value) params.set('type', typeFilter.value)
+  if (uriFilter.value) params.set('uri', uriFilter.value)
+  params.set('type', typeFilter)
   const data = await api.requests(params.toString())
   traces.value = data.traces
   total.value = data.total
 }
 
 onMounted(load)
-watch([page, methodFilter, typeFilter], load)
+watch([page, methodFilter, uriFilter, perPage], load)
+
 
 function timeAgo(ts: number): string {
   const diff = Date.now() / 1000 - ts
@@ -43,7 +50,6 @@ function parseMeta(t: Trace) {
   try { return JSON.parse(t.meta_json) } catch { return {} }
 }
 
-const totalPages = () => Math.ceil(total.value / perPage)
 </script>
 
 <template>
@@ -51,14 +57,14 @@ const totalPages = () => Math.ceil(total.value / perPage)
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">Requests</h1>
       <div class="flex gap-2">
+        <input
+          v-model="uriFilter"
+          placeholder="Search URI..."
+          class="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm w-48 placeholder-zinc-500"
+        />
         <select v-model="methodFilter" class="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm">
           <option value="">All methods</option>
           <option v-for="m in ['GET','POST','PUT','PATCH','DELETE']" :key="m" :value="m">{{ m }}</option>
-        </select>
-        <select v-model="typeFilter" class="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm">
-          <option value="">All types</option>
-          <option value="request">Request</option>
-          <option value="job">Job</option>
         </select>
       </div>
     </div>
@@ -68,7 +74,6 @@ const totalPages = () => Math.ceil(total.value / perPage)
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
             <th class="px-4 py-2 text-left">Time</th>
-            <th class="px-4 py-2 text-left">Type</th>
             <th class="px-4 py-2 text-left">Method</th>
             <th class="px-4 py-2 text-left">URI</th>
             <th class="px-4 py-2 text-left">Status</th>
@@ -86,11 +91,8 @@ const totalPages = () => Math.ceil(total.value / perPage)
             @click="$router.push(`/trace/${t.rid}`)"
           >
             <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(t.ts_start) }}</td>
-            <td class="px-4 py-2 text-xs">
-              <span :class="t.type === 'job' ? 'text-purple-400' : 'text-sky-400'">{{ t.type }}</span>
-            </td>
-            <td class="px-4 py-2"><MethodBadge v-if="t.method" :method="t.method" /></td>
-            <td class="px-4 py-2 font-mono text-xs truncate max-w-sm">{{ t.uri || parseMeta(t).job_class || parseMeta(t).command || '' }}</td>
+            <td class="px-4 py-2"><MethodBadge :method="t.method" /></td>
+            <td class="px-4 py-2 font-mono text-xs truncate max-w-sm">{{ t.uri }}</td>
             <td class="px-4 py-2"><StatusBadge v-if="t.status" :status="t.status" /></td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.duration_ms.toFixed(1) }}ms</td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.query_count }}</td>
@@ -101,19 +103,6 @@ const totalPages = () => Math.ceil(total.value / perPage)
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div v-if="totalPages() > 1" class="flex items-center justify-center gap-2">
-      <button
-        :disabled="page <= 1"
-        @click="page--"
-        class="px-3 py-1 text-sm bg-zinc-800 rounded hover:bg-zinc-700 disabled:opacity-40"
-      >Prev</button>
-      <span class="text-sm text-zinc-400">{{ page }} / {{ totalPages() }}</span>
-      <button
-        :disabled="page >= totalPages()"
-        @click="page++"
-        class="px-3 py-1 text-sm bg-zinc-800 rounded hover:bg-zinc-700 disabled:opacity-40"
-      >Next</button>
-    </div>
+    <Pagination v-model:page="page" v-model:per-page="perPage" :total="total" />
   </div>
 </template>

@@ -28,9 +28,11 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	h := &handlers{store: store, correlator: corr}
 
 	r.Get("/api/health", healthHandler)
+	r.Get("/api/dashboard", h.dashboard)
 	r.Get("/api/requests", h.listRequests)
 	r.Get("/api/trace/{rid}", h.getTrace)
 	r.Get("/api/mail", h.listMail)
+	r.Get("/api/mail/by-trace/{rid}", h.getMailByTrace)
 	r.Get("/api/mail/{id}", h.getMail)
 	r.Get("/api/mail/{id}/attachment", h.downloadAttachment)
 	r.Get("/api/ws", wsHub.HandleWS)

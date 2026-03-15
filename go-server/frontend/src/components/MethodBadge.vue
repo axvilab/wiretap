@@ -1,16 +1,16 @@
 <script setup lang="ts">
 const props = defineProps<{ method: string }>()
 
-const colors: Record<string, string> = {
-  GET: 'text-sky-400',
-  POST: 'text-emerald-400',
-  PUT: 'text-amber-400',
-  PATCH: 'text-orange-400',
-  DELETE: 'text-red-400',
+const styles: Record<string, string> = {
+  GET: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  POST: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  PUT: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  PATCH: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  DELETE: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
-const color = colors[props.method] || 'text-zinc-400'
+const style = styles[props.method] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
 </script>
 
 <template>
-  <span class="font-mono text-xs font-bold" :class="color">{{ method }}</span>
+  <span class="inline-flex px-2 py-0.5 text-xs font-mono font-bold rounded border" :class="style">{{ method }}</span>
 </template>

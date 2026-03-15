@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { api, type Trace } from '@/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { EventType } from '@/constants'
+import Pagination from '@/components/Pagination.vue'
 
-interface BroadcastEvent {
+interface BroadcastChannel {
+  name: string
+  type: string
+}
+
+interface BroadcastRow {
   rid: string
   ts: number
   event: string
-  channels: string[]
-  payload: any
+  channels: BroadcastChannel[]
 }
 
-const broadcasts = ref<BroadcastEvent[]>([])
+const broadcasts = ref<BroadcastRow[]>([])
+const page = ref(1)
+const perPage = ref(25)
 
 onMounted(async () => {
-  // Load recent traces and extract broadcast events
-  const data = await api.requests('per_page=100')
+  const data = await api.requests('per_page=200')
   for (const t of data.traces) {
     extractBroadcasts(t)
   }
@@ -31,13 +38,12 @@ function extractBroadcasts(trace: Trace) {
   try {
     const events = JSON.parse(trace.events_json)
     for (const ev of events) {
-      if (ev.type === 'broadcast') {
+      if (ev.type === EventType.BROADCAST) {
         broadcasts.value.unshift({
           rid: trace.rid,
           ts: trace.ts_start + ev.ts,
           event: ev.data.event,
           channels: ev.data.channels || [],
-          payload: ev.data.payload,
         })
       }
     }
@@ -50,41 +56,58 @@ function timeAgo(ts: number): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   return `${Math.floor(diff / 3600)}h ago`
 }
+
+const CHANNEL_STYLES: Record<string, string> = {
+  public: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  private: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  presence: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+}
+
+const paged = () => broadcasts.value.slice((page.value - 1) * perPage.value, page.value * perPage.value)
 </script>
 
 <template>
   <div class="p-6 space-y-4">
-    <h1 class="text-2xl font-bold">Broadcasts</h1>
+    <h1 class="text-2xl font-bold">Broadcasts ({{ broadcasts.length }})</h1>
 
     <div v-if="!broadcasts.length" class="text-zinc-500 py-8 text-center">No broadcasts captured yet</div>
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
-      <table v-if="broadcasts.length" class="w-full text-sm">
+    <div v-if="broadcasts.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+      <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
             <th class="px-4 py-2 text-left">Time</th>
             <th class="px-4 py-2 text-left">Event</th>
             <th class="px-4 py-2 text-left">Channels</th>
-            <th class="px-4 py-2 text-left">Payload</th>
-            <th class="px-4 py-2 text-left">Trace</th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="(b, i) in broadcasts"
+            v-for="(b, i) in paged()"
             :key="i"
-            class="border-b border-zinc-800/50 hover:bg-zinc-800/30"
+            class="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer transition-colors"
+            @click="$router.push(`/broadcasts/${b.rid}`)"
           >
             <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(b.ts) }}</td>
             <td class="px-4 py-2 font-mono text-xs text-indigo-400">{{ b.event }}</td>
-            <td class="px-4 py-2 text-xs text-zinc-400">{{ b.channels.join(', ') }}</td>
-            <td class="px-4 py-2 font-mono text-xs text-zinc-400 max-w-xs truncate">{{ JSON.stringify(b.payload) }}</td>
             <td class="px-4 py-2">
-              <router-link :to="`/trace/${b.rid}`" class="text-emerald-400 text-xs hover:underline">View</router-link>
+              <div class="flex gap-1 flex-wrap">
+                <span
+                  v-for="ch in b.channels"
+                  :key="ch.name"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border"
+                  :class="CHANNEL_STYLES[ch.type] || CHANNEL_STYLES.public"
+                >
+                  <span class="opacity-60">{{ ch.type }}</span>
+                  <span class="font-mono">{{ ch.name }}</span>
+                </span>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <Pagination v-model:page="page" v-model:per-page="perPage" :total="broadcasts.length" />
   </div>
 </template>

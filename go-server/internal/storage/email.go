@@ -89,6 +89,22 @@ func (s *Store) GetEmail(id string) (*Email, error) {
 	return &e, nil
 }
 
+func (s *Store) GetEmailByTrace(traceRID string) (*Email, error) {
+	var e Email
+	var toJSON, ccJSON, attachJSON string
+	err := s.db.QueryRow(
+		`SELECT id, from_addr, to_addrs, cc_addrs, subject, html, text_body, attachments_json, trace_rid, created_at
+		FROM emails WHERE trace_rid = ? LIMIT 1`, traceRID,
+	).Scan(&e.ID, &e.From, &toJSON, &ccJSON, &e.Subject, &e.HTML, &e.Text, &attachJSON, &e.TraceRID, &e.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal([]byte(toJSON), &e.To)
+	json.Unmarshal([]byte(ccJSON), &e.Cc)
+	json.Unmarshal([]byte(attachJSON), &e.Attachments)
+	return &e, nil
+}
+
 func (s *Store) GetEmailAttachment(emailID string, index int) (*EmailAttachment, error) {
 	var attachJSON string
 	err := s.db.QueryRow("SELECT attachments_json FROM emails WHERE id = ?", emailID).Scan(&attachJSON)

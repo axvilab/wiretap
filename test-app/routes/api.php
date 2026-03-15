@@ -47,6 +47,13 @@ Route::get('/posts-n-plus-one', function () {
     return response()->json(['posts' => $posts]);
 });
 
+// Broadcast test — fires event on public, private, presence channels
+Route::post('/broadcast', function () {
+    $orderId = rand(1000, 9999);
+    broadcast(new \App\Events\OrderShipped($orderId));
+    return response()->json(['order_id' => $orderId, 'broadcast' => true]);
+});
+
 // Health
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);

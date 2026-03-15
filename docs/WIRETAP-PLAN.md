@@ -1269,7 +1269,9 @@ Tasks:
 
 ---
 
-### PHASE 7: Pro Features + Monetization (Week 9-14)
+### PHASE 7: Advanced Features (Week 9-14)
+
+Project is fully open-source and free. No monetization, no license keys, no paid tiers.
 
 Tasks:
 ```
@@ -1277,7 +1279,7 @@ Tasks:
          - PHP sends app_name in payload
          - Go stores per-app
          - UI: app selector dropdown
-         
+
 [ ] 7.2  Auth for dashboard:
          - Basic auth middleware in Go
          - Configured via wiretap.yml
@@ -1299,16 +1301,8 @@ Tasks:
          - Group metrics by git_hash
          - Show: "After deploy abc123, errors on /api/payments increased 300%"
 
-[ ] 7.7  License key system:
-         - Pro features gated by license key
-         - Key validation (offline check, no phone-home)
-         
-[ ] 7.8  Payment integration:
-         - LemonSqueezy for license sales
-         - Landing page for Pro/Team plans
-
-[ ] 7.9  UDP driver (PHP + Go sides)
-[ ] 7.10 SHM driver (PHP + Go sides)
+[ ] 7.7  UDP driver (PHP + Go sides)
+[ ] 7.8  SHM driver (PHP + Go sides)
 ```
 
 ---
@@ -1448,11 +1442,14 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 
 ## TODO
 
-### Next session
-- [ ] Установить Laravel Reverb в test-app
-- [ ] Создать ShouldBroadcast event в test-app
-- [ ] Проверить что Wiretap перехватывает broadcasts и показывает на странице Broadcasts
-- [ ] Продолжить по плану: тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
+### Next
+- [ ] Тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
+
+### Backlog
+- [ ] Протестировать PHP пакет на Laravel 10 и 11 (сейчас тестируем только на 12)
+  - Swift Mailer vs Symfony Mailer в mail listeners
+  - JobQueued event format differences
+  - Добавить compatibility layer или дропнуть Laravel 10
 
 ### Done (2026-03-14)
 - [x] Phase 0: Docker-first dev environment (docker-compose, air, Makefile)

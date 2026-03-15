@@ -23,7 +23,7 @@ async function downloadFile(url: string, filename: string) {
 
 <template>
   <div class="p-6 space-y-4">
-    <button @click="$router.back()" class="text-zinc-400 hover:text-zinc-100 text-sm">&larr; Back to Mail</button>
+    <button @click="$router.back()" class="text-zinc-400 hover:text-zinc-100 text-lg">&larr; Back to Mail</button>
 
     <template v-if="email">
       <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2">

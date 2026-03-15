@@ -61,10 +61,29 @@ export interface MailListResult {
   per_page: number
 }
 
+export interface DashboardData {
+  period: string
+  stats: {
+    total_requests: number
+    total_jobs: number
+    total_emails: number
+    total_exceptions: number
+    avg_duration: number
+    median_duration: number
+    p95_duration: number
+    requests_per_min: number
+  }
+  timeline: { timestamp: string; count: number; avg_ms: number; p95_ms: number; error_count: number }[]
+  status_breakdown: { group: string; count: number }[]
+  slow_endpoints: { method: string; uri: string; count: number; avg_ms: number; max_ms: number; p95_ms: number }[]
+}
+
 export const api = {
+  dashboard: (period = '1h') => get<DashboardData>(`/dashboard?period=${period}`),
   requests: (params = '') => get<ListResult>(`/requests${params ? '?' + params : ''}`),
   trace: (rid: string) => get<TraceNode>(`/trace/${rid}`),
   mail: (params = '') => get<MailListResult>(`/mail${params ? '?' + params : ''}`),
   mailDetail: (id: string) => get<Email>(`/mail/${id}`),
+  mailByTrace: (rid: string) => get<Email>(`/mail/by-trace/${rid}`),
   health: () => get<{ status: string }>('/health'),
 }

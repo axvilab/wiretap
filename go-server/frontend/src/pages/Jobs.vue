@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { api, type Trace } from '@/api'
+import { JobStatus } from '@/constants'
+import Pagination from '@/components/Pagination.vue'
 
 const jobs = ref<Trace[]>([])
+const total = ref(0)
+const page = ref(1)
+const perPage = ref(25)
 
-onMounted(async () => {
-  const data = await api.requests('type=job&per_page=100')
+async function load() {
+  const data = await api.requests(`type=job&page=${page.value}&per_page=${perPage.value}`)
   jobs.value = data.traces
-})
+  total.value = data.total
+}
 
+onMounted(load)
+watch([page, perPage], load)
 function getMeta(t: Trace) {
   try { return JSON.parse(t.meta_json) } catch { return {} }
 }
@@ -19,6 +27,14 @@ function timeAgo(ts: number): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   return `${Math.floor(diff / 3600)}h ago`
 }
+
+const STATUS_STYLES: Record<string, string> = {
+  [JobStatus.COMPLETED]: 'bg-emerald-500/10 text-emerald-400',
+  [JobStatus.FAILED]: 'bg-red-500/10 text-red-400',
+  [JobStatus.PENDING]: 'bg-zinc-500/10 text-zinc-400',
+  [JobStatus.PROCESSING]: 'bg-amber-500/10 text-amber-400',
+}
+
 </script>
 
 <template>
@@ -50,10 +66,9 @@ function timeAgo(ts: number): string {
             <td class="px-4 py-2 font-mono text-xs text-purple-400">{{ getMeta(j).job_class }}</td>
             <td class="px-4 py-2 text-xs text-zinc-400">{{ getMeta(j).queue || 'default' }}</td>
             <td class="px-4 py-2">
-              <span
-                class="text-xs px-2 py-0.5 rounded"
-                :class="getMeta(j).status === 'failed' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'"
-              >{{ getMeta(j).status || 'completed' }}</span>
+              <span class="text-xs px-2 py-0.5 rounded" :class="STATUS_STYLES[getMeta(j).status] || STATUS_STYLES.completed">
+                {{ getMeta(j).status || 'completed' }}
+              </span>
             </td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ j.duration_ms.toFixed(1) }}ms</td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ j.query_count }}</td>
@@ -61,5 +76,7 @@ function timeAgo(ts: number): string {
         </tbody>
       </table>
     </div>
+
+    <Pagination v-model:page="page" v-model:per-page="perPage" :total="total" />
   </div>
 </template>

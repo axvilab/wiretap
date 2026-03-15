@@ -1,22 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { api, type Email } from '@/api'
+import Pagination from '@/components/Pagination.vue'
 
 const emails = ref<Email[]>([])
 const total = ref(0)
+const page = ref(1)
+const perPage = ref(25)
 
-onMounted(async () => {
-  const data = await api.mail()
+async function load() {
+  const data = await api.mail(`page=${page.value}&per_page=${perPage.value}`)
   emails.value = data.emails
   total.value = data.total
-})
+}
 
+onMounted(load)
+watch([page, perPage], load)
 function timeAgo(ts: number): string {
   const diff = Date.now() / 1000 - ts
   if (diff < 60) return `${Math.floor(diff)}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   return `${Math.floor(diff / 3600)}h ago`
 }
+
 </script>
 
 <template>
@@ -25,24 +31,38 @@ function timeAgo(ts: number): string {
 
     <div v-if="!emails.length" class="text-zinc-500 py-8 text-center">No emails intercepted yet</div>
 
-    <div
-      v-for="e in emails"
-      :key="e.id"
-      class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 cursor-pointer hover:border-zinc-700 transition-colors"
-      @click="$router.push(`/mail/${e.id}`)"
-    >
-      <div class="flex items-center justify-between mb-1">
-        <span class="font-semibold text-sm">{{ e.subject }}</span>
-        <span class="text-zinc-500 text-xs">{{ timeAgo(e.created_at) }}</span>
-      </div>
-      <div class="text-zinc-400 text-xs">
-        <span>From: {{ e.from }}</span>
-        <span class="mx-2">&rarr;</span>
-        <span>To: {{ e.to.join(', ') }}</span>
-      </div>
-      <div v-if="e.attachments?.length" class="text-zinc-500 text-xs mt-1">
-        {{ e.attachments.length }} attachment(s)
-      </div>
+    <div v-if="emails.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-zinc-500 text-xs border-b border-zinc-800">
+            <th class="px-4 py-2 text-left">Time</th>
+            <th class="px-4 py-2 text-left">Subject</th>
+            <th class="px-4 py-2 text-left">From</th>
+            <th class="px-4 py-2 text-left">To</th>
+            <th class="px-4 py-2 text-right">Attachments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="e in emails"
+            :key="e.id"
+            class="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer transition-colors"
+            @click="$router.push(`/mail/${e.id}`)"
+          >
+            <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(e.created_at) }}</td>
+            <td class="px-4 py-2 text-sm font-medium">{{ e.subject }}</td>
+            <td class="px-4 py-2 text-xs text-zinc-400">{{ e.from }}</td>
+            <td class="px-4 py-2 text-xs text-zinc-400">{{ e.to?.join(', ') }}</td>
+            <td class="px-4 py-2 text-right">
+              <span v-if="e.attachments?.length" class="inline-flex px-1.5 py-0.5 text-xs rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                {{ e.attachments.length }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+
+    <Pagination v-model:page="page" v-model:per-page="perPage" :total="total" />
   </div>
 </template>
