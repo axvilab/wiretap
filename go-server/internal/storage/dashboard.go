@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -176,4 +177,69 @@ func (s *Store) DashboardSlowEndpoints(since float64, limit int) ([]SlowEndpoint
 		endpoints = []SlowEndpoint{}
 	}
 	return endpoints, nil
+}
+
+type SlowQuery struct {
+	SQL       string  `json:"sql"`
+	TimeMs    float64 `json:"time_ms"`
+	TraceRID  string  `json:"trace_rid"`
+	TraceType string  `json:"trace_type"`
+	TraceURI  string  `json:"trace_uri"`
+}
+
+func (s *Store) DashboardSlowQueries(since float64, limit int) ([]SlowQuery, error) {
+	rows, err := s.db.Query(`
+		SELECT rid, type, uri, events_json
+		FROM traces
+		WHERE ts_start >= ? AND events_json LIKE '%"type":"query"%'
+		ORDER BY ts_start DESC
+		LIMIT 500
+	`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var all []SlowQuery
+	for rows.Next() {
+		var rid, traceType, uri, eventsJSON string
+		rows.Scan(&rid, &traceType, &uri, &eventsJSON)
+
+		var events []Event
+		json.Unmarshal([]byte(eventsJSON), &events)
+		for _, ev := range events {
+			if ev.Type != "query" {
+				continue
+			}
+			var qd struct {
+				SQL    string  `json:"sql"`
+				TimeMs float64 `json:"time_ms"`
+			}
+			json.Unmarshal(ev.Data, &qd)
+			all = append(all, SlowQuery{
+				SQL:       qd.SQL,
+				TimeMs:    math.Round(qd.TimeMs*100) / 100,
+				TraceRID:  rid,
+				TraceType: traceType,
+				TraceURI:  uri,
+			})
+		}
+	}
+
+	// Sort by time_ms desc
+	for i := 0; i < len(all); i++ {
+		for j := i + 1; j < len(all); j++ {
+			if all[j].TimeMs > all[i].TimeMs {
+				all[i], all[j] = all[j], all[i]
+			}
+		}
+	}
+
+	if len(all) > limit {
+		all = all[:limit]
+	}
+	if all == nil {
+		all = []SlowQuery{}
+	}
+	return all, nil
 }

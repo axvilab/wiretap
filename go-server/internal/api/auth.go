@@ -5,24 +5,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/axvi/wiretap/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
 
+const sessionTTL = 24 * time.Hour
+
 type authManager struct {
-	store    *storage.Store
-	sessions map[string]time.Time
-	mu       sync.RWMutex
+	store *storage.Store
 }
 
 func newAuthManager(store *storage.Store) *authManager {
-	return &authManager{
-		store:    store,
-		sessions: make(map[string]time.Time),
-	}
+	return &authManager{store: store}
 }
 
 func (am *authManager) isSetupDone() bool {
@@ -34,7 +30,7 @@ func (am *authManager) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
-		// Always allow auth endpoints, health, and ingest
+		// Always allow auth endpoints and health
 		if path == "/api/auth/login" || path == "/api/auth/setup" || path == "/api/auth/status" || path == "/api/health" {
 			next.ServeHTTP(w, r)
 			return
@@ -48,7 +44,7 @@ func (am *authManager) middleware(next http.Handler) http.Handler {
 
 		// Check session cookie
 		cookie, err := r.Cookie("wiretap_session")
-		if err != nil || !am.validSession(cookie.Value) {
+		if err != nil || !am.store.ValidateSession(cookie.Value) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"error":"unauthorized"}`))
@@ -59,30 +55,23 @@ func (am *authManager) middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (am *authManager) validSession(token string) bool {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
-	expiry, ok := am.sessions[token]
-	if !ok {
-		return false
-	}
-	if time.Now().After(expiry) {
-		delete(am.sessions, token)
-		return false
-	}
-	return true
-}
-
 func (am *authManager) createSession() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	token := hex.EncodeToString(b)
-
-	am.mu.Lock()
-	am.sessions[token] = time.Now().Add(24 * time.Hour)
-	am.mu.Unlock()
-
+	am.store.CreateSession(token, sessionTTL)
 	return token
+}
+
+func (am *authManager) setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "wiretap_session",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(sessionTTL.Seconds()),
+	})
 }
 
 func (am *authManager) statusHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +79,7 @@ func (am *authManager) statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	authenticated := false
 	if cookie, err := r.Cookie("wiretap_session"); err == nil {
-		authenticated = am.validSession(cookie.Value)
+		authenticated = am.store.ValidateSession(cookie.Value)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -127,16 +116,8 @@ func (am *authManager) setupHandler(w http.ResponseWriter, r *http.Request) {
 
 	am.store.SetSetting("auth_password_hash", string(hash))
 
-	// Auto-login after setup
 	token := am.createSession()
-	http.SetCookie(w, &http.Cookie{
-		Name:     "wiretap_session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   86400,
-	})
+	am.setSessionCookie(w, token)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":true}`))
@@ -165,14 +146,7 @@ func (am *authManager) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := am.createSession()
-	http.SetCookie(w, &http.Cookie{
-		Name:     "wiretap_session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   86400,
-	})
+	am.setSessionCookie(w, token)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":true}`))
@@ -180,9 +154,7 @@ func (am *authManager) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func (am *authManager) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("wiretap_session"); err == nil {
-		am.mu.Lock()
-		delete(am.sessions, cookie.Value)
-		am.mu.Unlock()
+		am.store.DeleteSession(cookie.Value)
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -192,6 +164,42 @@ func (am *authManager) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		MaxAge:   -1,
 	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":true}`))
+}
+
+// changePasswordHandler allows changing the password from Settings
+func (am *authManager) changePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	if body.NewPassword == "" || len(body.NewPassword) < 6 {
+		http.Error(w, `{"error":"new password must be at least 6 characters"}`, http.StatusBadRequest)
+		return
+	}
+
+	hash, _ := am.store.GetSetting("auth_password_hash")
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.CurrentPassword)); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"current password is wrong"}`))
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, `{"error":"failed to hash password"}`, http.StatusInternalServerError)
+		return
+	}
+
+	am.store.SetSetting("auth_password_hash", string(newHash))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":true}`))

@@ -1,36 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { api, type DashboardData, type Trace } from '@/api'
+import { api, type DashboardData } from '@/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { TraceType, ROOT_TRACE_TYPES } from '@/constants'
-import StatusBadge from '@/components/StatusBadge.vue'
-import MethodBadge from '@/components/MethodBadge.vue'
-import WarningIcons from '@/components/WarningIcons.vue'
 import VChart from 'vue-echarts'
 import { Activity, Database, Bug, Mail, Briefcase, Clock, Zap } from 'lucide-vue-next'
 
 const period = ref<'1h' | '24h' | '7d'>('1h')
 const data = ref<DashboardData | null>(null)
-const recent = ref<Trace[]>([])
 
 async function load() {
-  const [dash, recentData] = await Promise.all([
-    api.dashboard(period.value),
-    api.requests(`per_page=10&type=${ROOT_TRACE_TYPES.join(',')}`),
-  ])
-  data.value = dash
-  recent.value = recentData.traces
+  data.value = await api.dashboard(period.value)
 }
 
 onMounted(load)
 watch(period, load)
 
 useWebSocket((event) => {
-  if (event.type === 'trace.new' && event.data) {
-    if (ROOT_TRACE_TYPES.includes(event.data.type)) {
-      recent.value = [event.data, ...recent.value].slice(0, 10)
-    }
-    // Refresh dashboard data on new traces
+  if (event.type === 'trace.new') {
     load()
   }
 })
@@ -87,20 +73,7 @@ const statusChart = computed(() => {
   }
 })
 
-function traceLabel(t: Trace): string {
-  if (t.uri) return t.uri
-  try {
-    const meta = JSON.parse(t.meta_json)
-    return meta.job_class || meta.command || meta.expression || t.type
-  } catch { return t.type }
-}
 
-function timeAgo(ts: number): string {
-  const diff = Date.now() / 1000 - ts
-  if (diff < 60) return `${Math.floor(diff)}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  return `${Math.floor(diff / 3600)}h ago`
-}
 </script>
 
 <template>
@@ -184,76 +157,5 @@ function timeAgo(ts: number): string {
       <div v-else class="h-[180px] flex items-center justify-center text-zinc-600 text-sm">No data</div>
     </div>
 
-    <!-- Slow endpoints + Recent Activity -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Slow endpoints -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-lg" v-if="data?.slow_endpoints.length">
-        <div class="px-4 py-3 border-b border-zinc-800 font-semibold text-sm">Slow Endpoints</div>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-zinc-500 text-xs border-b border-zinc-800">
-              <th class="px-4 py-2 text-left">Endpoint</th>
-              <th class="px-4 py-2 text-right">Hits</th>
-              <th class="px-4 py-2 text-right">Avg</th>
-              <th class="px-4 py-2 text-right">P95</th>
-              <th class="px-4 py-2 text-right">Max</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="e in data.slow_endpoints"
-              :key="e.uri"
-              class="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer transition-colors"
-              @click="$router.push(`/requests?uri=${e.uri}`)"
-            >
-              <td class="px-4 py-2 font-mono text-xs">
-                <MethodBadge :method="e.method" />
-                <span class="ml-2">{{ e.uri }}</span>
-              </td>
-              <td class="px-4 py-2 text-right text-xs">{{ e.count }}</td>
-              <td class="px-4 py-2 text-right font-mono text-xs">{{ e.avg_ms }}ms</td>
-              <td class="px-4 py-2 text-right font-mono text-xs text-amber-400">{{ e.p95_ms }}ms</td>
-              <td class="px-4 py-2 text-right font-mono text-xs text-red-400">{{ e.max_ms }}ms</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Recent Activity -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
-        <div class="px-4 py-3 border-b border-zinc-800 font-semibold text-sm">Recent Activity</div>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-zinc-500 text-xs border-b border-zinc-800">
-              <th class="px-3 py-2 text-left">Time</th>
-              <th class="px-3 py-2 text-left">Type</th>
-              <th class="px-3 py-2 text-left">Action</th>
-              <th class="px-3 py-2 text-right">Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="t in recent"
-              :key="t.rid"
-              class="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer transition-colors"
-              @click="$router.push(`/trace/${t.rid}`)"
-            >
-              <td class="px-3 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(t.ts_start) }}</td>
-              <td class="px-3 py-2">
-                <span class="inline-flex px-1.5 py-0.5 text-xs rounded border"
-                  :class="t.type === TraceType.REQUEST ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
-                          t.type === TraceType.COMMAND ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                          t.type === TraceType.SCHEDULE ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                          'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'"
-                >{{ t.type }}</span>
-                <MethodBadge v-if="t.method" :method="t.method" class="ml-1" />
-              </td>
-              <td class="px-3 py-2 font-mono text-xs truncate max-w-[200px]">{{ traceLabel(t) }}</td>
-              <td class="px-3 py-2 text-right font-mono text-xs">{{ t.duration_ms.toFixed(1) }}ms</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </template>

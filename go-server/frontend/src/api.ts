@@ -89,6 +89,7 @@ export interface DashboardData {
   timeline: { timestamp: string; count: number; avg_ms: number; p95_ms: number; error_count: number }[]
   status_breakdown: { group: string; count: number }[]
   slow_endpoints: { method: string; uri: string; count: number; avg_ms: number; max_ms: number; p95_ms: number }[]
+  slow_queries: { sql: string; time_ms: number; trace_rid: string; trace_type: string; trace_uri: string }[]
 }
 
 export const api = {

@@ -34,6 +34,7 @@ export const EventType = {
   SCHEDULE_START: 'schedule.start',
   SCHEDULE_END: 'schedule.end',
   SCHEDULE_FAILED: 'schedule.failed',
+  LOG: 'log',
 } as const
 
 export const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -56,4 +57,5 @@ export const EVENT_TYPE_COLORS: Record<string, string> = {
   [EventType.SCHEDULE_START]: 'text-violet-400',
   [EventType.SCHEDULE_END]: 'text-violet-400',
   [EventType.SCHEDULE_FAILED]: 'text-red-400',
+  [EventType.LOG]: 'text-blue-400',
 }

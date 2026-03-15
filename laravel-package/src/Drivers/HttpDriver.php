@@ -3,9 +3,12 @@
 namespace Axvi\Wiretap\Drivers;
 
 use Axvi\Wiretap\Contracts\DriverInterface;
+use Illuminate\Support\Facades\Log;
 
 class HttpDriver implements DriverInterface
 {
+    private static bool $connectionWarned = false;
+
     public function __construct(
         protected string $endpoint,
         protected int $timeoutMs = 50,
@@ -34,7 +37,20 @@ class HttpDriver implements DriverInterface
             CURLOPT_CONNECTTIMEOUT_MS => $this->timeoutMs,
             CURLOPT_NOSIGNAL => 1,
         ]);
-        @curl_exec($ch);
+
+        $result = @curl_exec($ch);
+        $errno = curl_errno($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         @curl_close($ch);
+
+        if ($errno !== 0 || ($httpCode > 0 && $httpCode >= 400)) {
+            if (! self::$connectionWarned) {
+                self::$connectionWarned = true;
+                $error = $errno !== 0 ? curl_strerror($errno) : "HTTP {$httpCode}";
+                Log::warning("[Wiretap] Cannot reach server at {$this->endpoint}: {$error}");
+            }
+        } else {
+            self::$connectionWarned = false;
+        }
     }
 }

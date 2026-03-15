@@ -85,6 +85,7 @@ class WiretapServiceProvider extends ServiceProvider
         $this->registerVarDumper();
         $this->registerValidationListener();
         $this->registerBroadcastListener();
+        $this->registerLogListener();
         $this->registerReplayRoutes();
     }
 
@@ -500,17 +501,17 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerValidationListener(): void
     {
-        $this->app->resolving(\Illuminate\Validation\Validator::class, function ($validator) {
-            $validator->after(function ($validator) {
-                if (Wiretap::$rid === '' || ! $validator->fails()) {
-                    return;
+        // Hook into exception rendering to catch ValidationException
+        $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
+            ->renderable(function (\Illuminate\Validation\ValidationException $e) {
+                if (Wiretap::$rid !== '') {
+                    Wiretap::send('validation', [
+                        'errors' => $e->errors(),
+                        'rules' => [],
+                    ]);
                 }
-                Wiretap::send('validation', [
-                    'errors' => $validator->errors()->toArray(),
-                    'rules' => array_keys($validator->getRules()),
-                ]);
+                return null; // let Laravel handle rendering as usual
             });
-        });
     }
 
     protected function registerBroadcastListener(): void
@@ -544,6 +545,26 @@ class WiretapServiceProvider extends ServiceProvider
                 'event' => get_class($event),
                 'channels' => $channels,
                 'payload' => method_exists($event, 'broadcastWith') ? $event->broadcastWith() : [],
+            ]);
+        });
+    }
+
+    protected function registerLogListener(): void
+    {
+        if (! config('wiretap.collect.logs', true)) {
+            return;
+        }
+
+        Event::listen(\Illuminate\Log\Events\MessageLogged::class, function ($event) {
+            if (Wiretap::$rid === '') return;
+
+            // Don't capture our own warnings
+            if (str_starts_with($event->message, '[Wiretap]')) return;
+
+            Wiretap::send('log', [
+                'level' => $event->level,
+                'message' => $event->message,
+                'context' => !empty($event->context) ? array_slice($event->context, 0, 5) : [],
             ]);
         });
     }

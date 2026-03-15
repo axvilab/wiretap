@@ -45,11 +45,18 @@ func (h *handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slowQueries, err := h.store.DashboardSlowQueries(since, 10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	writeJSON(w, map[string]any{
 		"period":           strconv.Itoa(hours) + "h",
 		"stats":            stats,
 		"timeline":         timeline,
 		"status_breakdown": statusBreakdown,
 		"slow_endpoints":   slowEndpoints,
+		"slow_queries":     slowQueries,
 	})
 }

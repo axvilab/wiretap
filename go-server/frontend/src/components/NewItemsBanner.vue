@@ -11,6 +11,8 @@ const props = defineProps<{
   mailOnly?: boolean
   /** Count only traces containing broadcast events */
   broadcastOnly?: boolean
+  /** Count only traces containing log events */
+  logsOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -43,6 +45,14 @@ useWebSocket((event: WSEvent) => {
     try {
       const events = JSON.parse(event.data.events_json || '[]')
       if (!events.some((e: any) => e.type === 'broadcast')) return
+    } catch { return }
+  }
+
+  // Filter for logs
+  if (props.logsOnly) {
+    try {
+      const events = JSON.parse(event.data.events_json || '[]')
+      if (!events.some((e: any) => e.type === 'log')) return
     } catch { return }
   }
 

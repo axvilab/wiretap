@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings, Terminal, Clock, LogOut } from 'lucide-vue-next'
+import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings, Terminal, Clock, LogOut, FileText, Bell, Gauge, List } from 'lucide-vue-next'
 import Login from '@/pages/Login.vue'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/activity', label: 'Activity', icon: List },
+  { to: '/performance', label: 'Performance', icon: Gauge },
   { to: '/requests', label: 'Requests', icon: Activity },
   { to: '/commands', label: 'Commands', icon: Terminal },
   { to: '/schedule', label: 'Schedule', icon: Clock },
@@ -13,6 +15,8 @@ const nav = [
   { to: '/exceptions', label: 'Exceptions', icon: Bug },
   { to: '/mail', label: 'Mail', icon: Mail },
   { to: '/broadcasts', label: 'Broadcasts', icon: Podcast },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/logs', label: 'Logs', icon: FileText },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

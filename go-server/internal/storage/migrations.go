@@ -38,6 +38,10 @@ func (s *Store) migrate() error {
 			key   VARCHAR PRIMARY KEY,
 			value VARCHAR NOT NULL DEFAULT ''
 		)`,
+		`CREATE TABLE IF NOT EXISTS sessions (
+			token      VARCHAR PRIMARY KEY,
+			expires_at DOUBLE NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS emails (
 			id              VARCHAR PRIMARY KEY,
 			from_addr       VARCHAR NOT NULL,

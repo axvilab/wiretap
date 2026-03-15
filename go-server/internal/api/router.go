@@ -34,6 +34,7 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r.Post("/api/auth/login", am.loginHandler)
 	r.Get("/api/auth/status", am.statusHandler)
 	r.Post("/api/auth/logout", am.logoutHandler)
+	r.Post("/api/auth/change-password", am.changePasswordHandler)
 
 	h := &handlers{store: store, correlator: corr}
 

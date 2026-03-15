@@ -33,6 +33,7 @@ return [
         'transactions' => true,
         'commands' => true,
         'schedule' => true,
+        'logs' => true,
         'request_body' => true,
         'job_payload' => true,
     ],
