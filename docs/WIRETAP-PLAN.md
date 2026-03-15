@@ -1443,6 +1443,7 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 ## TODO
 
 ### Next
+- [ ] Replay/retry механизм (2A.15: ReplayController в PHP, кнопки в UI)
 - [ ] Тесты (Go, PHP, Vitest), CI/CD, README, GitHub release
 
 ### Backlog
@@ -1484,6 +1485,11 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 - [x] URI search filter in Requests page
 - [x] Requests page: only HTTP requests (no jobs), type filter removed
 - [x] Dashboard: Recent Activity shows root types only (request, command, schedule), not jobs
+- [x] Commands page: list with command name, exit code badge, duration, queries
+- [x] Schedule page: list with cron expression badge, command, duration
+- [x] Command → Job → Child Job tree verified (test:reports → ProcessOrder → UpdateInventory)
+- [x] TraceTree: human-readable display for command.start/end, schedule.start/end/failed events
+- [x] Constants: EVENT_TYPE_COLORS, all event types in EventType enum
 
 ---
 
