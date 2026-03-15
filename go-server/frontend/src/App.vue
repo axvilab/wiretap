@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings, Terminal, Clock } from 'lucide-vue-next'
+import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings, Terminal, Clock, LogOut } from 'lucide-vue-next'
+import Login from '@/pages/Login.vue'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,10 +15,46 @@ const nav = [
   { to: '/broadcasts', label: 'Broadcasts', icon: Podcast },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
+
+const authState = ref<'loading' | 'setup' | 'login' | 'ready'>('loading')
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/auth/status')
+    const data = await res.json()
+
+    if (!data.setup_done) {
+      authState.value = 'setup'
+    } else if (!data.authenticated) {
+      authState.value = 'login'
+    } else {
+      authState.value = 'ready'
+    }
+  } catch {
+    authState.value = 'ready' // fallback if auth endpoint unavailable
+  }
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' })
+  authState.value = 'login'
+}
+
+onMounted(checkAuth)
 </script>
 
 <template>
-  <div class="flex h-screen">
+  <!-- Loading -->
+  <div v-if="authState === 'loading'" class="min-h-screen bg-zinc-950 flex items-center justify-center">
+    <div class="text-zinc-500">Loading...</div>
+  </div>
+
+  <!-- Setup / Login -->
+  <Login v-else-if="authState === 'setup'" :setup="true" @success="authState = 'ready'" />
+  <Login v-else-if="authState === 'login'" @success="authState = 'ready'" />
+
+  <!-- App -->
+  <div v-else class="flex h-screen">
     <!-- Sidebar -->
     <nav class="w-56 shrink-0 border-r border-zinc-800 bg-zinc-900 flex flex-col">
       <div class="p-4 border-b border-zinc-800">
@@ -37,8 +75,11 @@ const nav = [
           {{ item.label }}
         </RouterLink>
       </div>
-      <div class="p-4 border-t border-zinc-800 text-xs text-zinc-600">
-        Wiretap v0.1
+      <div class="p-4 border-t border-zinc-800 flex items-center justify-between">
+        <span class="text-xs text-zinc-600">Wiretap v0.1</span>
+        <button @click="logout" class="text-zinc-600 hover:text-zinc-400 transition-colors" title="Sign out">
+          <LogOut class="w-4 h-4" />
+        </button>
       </div>
     </nav>
 

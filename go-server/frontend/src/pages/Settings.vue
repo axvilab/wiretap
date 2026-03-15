@@ -8,6 +8,7 @@ const { connected } = useWebSocket(() => {})
 
 const appUrl = ref('')
 const replaySecret = ref('')
+const ingestApiKey = ref('')
 const slowQueryMs = ref('100')
 const slowRequestMs = ref('1000')
 const saving = ref(false)
@@ -25,6 +26,7 @@ onMounted(async () => {
     const settings = await api.getSettings()
     appUrl.value = settings.app_url || ''
     replaySecret.value = settings.replay_secret || ''
+    ingestApiKey.value = settings.ingest_api_key || ''
     slowQueryMs.value = settings.slow_query_ms || '100'
     slowRequestMs.value = settings.slow_request_ms || '1000'
   } catch {}
@@ -37,6 +39,7 @@ async function saveSettings() {
     await api.updateSettings({
       app_url: appUrl.value,
       replay_secret: replaySecret.value,
+      ingest_api_key: ingestApiKey.value,
       slow_query_ms: slowQueryMs.value,
       slow_request_ms: slowRequestMs.value,
     })
@@ -69,6 +72,24 @@ async function saveSettings() {
             {{ connected ? 'Connected' : 'Disconnected' }}
           </span>
         </div>
+      </div>
+    </div>
+
+    <!-- Security -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-4">
+      <h2 class="font-semibold text-sm">Security</h2>
+      <div>
+        <label class="text-xs text-zinc-400 mb-1 block">Ingest API Key</label>
+        <input
+          v-model="ingestApiKey"
+          type="password"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm font-mono"
+          placeholder="Leave empty to allow all (not recommended)"
+        />
+        <p class="text-xs text-zinc-600 mt-1">
+          If set, PHP package must send this key via <code class="text-zinc-500">X-Wiretap-Key</code> header.
+          Set <code class="text-zinc-500">WIRETAP_INGEST_KEY</code> in your Laravel <code class="text-zinc-500">.env</code>
+        </p>
       </div>
     </div>
 

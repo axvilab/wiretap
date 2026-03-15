@@ -5,6 +5,8 @@ return [
 
     'driver' => env('WIRETAP_DRIVER', 'http'),
 
+    'ingest_key' => env('WIRETAP_INGEST_KEY', ''),
+
     'drivers' => [
         'http' => [
             'endpoint' => env('WIRETAP_URL', 'http://localhost:9090/ingest'),

@@ -12,9 +12,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewIngestRouter(recv *receiver.HTTPReceiver) http.Handler {
+func NewIngestRouter(recv *receiver.HTTPReceiver, store *storage.Store) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	r.Use(ingestKeyMiddleware(store))
 	r.Post("/ingest", recv.Handler())
 	r.Get("/health", healthHandler)
 	return r
@@ -24,6 +25,15 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
+
+	// Auth
+	am := newAuthManager(store)
+	r.Use(am.middleware)
+
+	r.Post("/api/auth/setup", am.setupHandler)
+	r.Post("/api/auth/login", am.loginHandler)
+	r.Get("/api/auth/status", am.statusHandler)
+	r.Post("/api/auth/logout", am.logoutHandler)
 
 	h := &handlers{store: store, correlator: corr}
 
@@ -81,8 +91,9 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

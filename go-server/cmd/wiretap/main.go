@@ -49,7 +49,7 @@ func main() {
 	// Servers
 	ingestServer := &http.Server{
 		Addr:    ":" + cfg.IngestPort,
-		Handler: api.NewIngestRouter(recv),
+		Handler: api.NewIngestRouter(recv, store),
 	}
 	webServer := &http.Server{
 		Addr:    ":" + cfg.WebPort,
