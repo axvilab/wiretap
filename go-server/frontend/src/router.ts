@@ -7,6 +7,8 @@ import Exceptions from './pages/Exceptions.vue'
 import Jobs from './pages/Jobs.vue'
 import Mail from './pages/Mail.vue'
 import MailDetail from './pages/MailDetail.vue'
+import Commands from './pages/Commands.vue'
+import Schedule from './pages/Schedule.vue'
 import Broadcasts from './pages/Broadcasts.vue'
 import BroadcastDetail from './pages/BroadcastDetail.vue'
 import Settings from './pages/Settings.vue'
@@ -21,6 +23,8 @@ export const router = createRouter({
     { path: '/jobs', component: Jobs },
     { path: '/mail', component: Mail },
     { path: '/mail/:id', component: MailDetail, props: true },
+    { path: '/commands', component: Commands },
+    { path: '/schedule', component: Schedule },
     { path: '/broadcasts', component: Broadcasts },
     { path: '/broadcasts/:rid', component: BroadcastDetail, props: true },
     { path: '/settings', component: Settings },

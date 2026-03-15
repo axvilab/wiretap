@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { TraceNode } from '@/api'
-import { EventType, TraceType, JobStatus } from '@/constants'
+import { EventType, TraceType, JobStatus, EVENT_TYPE_COLORS } from '@/constants'
 
 const props = defineProps<{ node: TraceNode; depth?: number }>()
 const expanded = ref((props.depth || 0) === 0)
@@ -17,21 +17,7 @@ function formatTs(ts: number): string {
 }
 
 function eventColor(type: string): string {
-  const colors: Record<string, string> = {
-    query: 'text-sky-400',
-    'request.start': 'text-zinc-400',
-    'request.end': 'text-zinc-400',
-    exception: 'text-red-400',
-    'job.queued': 'text-purple-400',
-    'job.start': 'text-purple-400',
-    'job.end': 'text-purple-400',
-    cache: 'text-amber-400',
-    'cache.write': 'text-amber-400',
-    'mail.sending': 'text-emerald-400',
-    'mail.sent': 'text-emerald-400',
-    transaction: 'text-zinc-500',
-  }
-  return colors[type] || 'text-zinc-400'
+  return EVENT_TYPE_COLORS[type] || 'text-zinc-400'
 }
 
 function parseMeta(json: string) {
@@ -144,6 +130,27 @@ async function goToMail(traceRID: string) {
         <template v-else-if="ev.type === 'transaction'">
           <span class="text-zinc-400">{{ ev.data.action }}</span>
           <span class="text-zinc-600 ml-2">{{ ev.data.connection }}</span>
+        </template>
+        <template v-else-if="ev.type === 'command.start'">
+          <span class="text-orange-300">{{ ev.data.command }}</span>
+        </template>
+        <template v-else-if="ev.type === 'command.end'">
+          <span class="text-orange-300">{{ ev.data.command }}</span>
+          <span class="ml-2 px-1.5 py-0.5 rounded text-xs border"
+            :class="ev.data.exit_code === 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
+          >exit {{ ev.data.exit_code }}</span>
+        </template>
+        <template v-else-if="ev.type === 'schedule.start'">
+          <span class="text-violet-300">{{ ev.data.command }}</span>
+          <span class="text-zinc-500 ml-2">{{ ev.data.expression }}</span>
+        </template>
+        <template v-else-if="ev.type === 'schedule.end'">
+          <span class="text-violet-300">{{ ev.data.command }}</span>
+          <span class="ml-2 px-1.5 py-0.5 rounded text-xs border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">done</span>
+        </template>
+        <template v-else-if="ev.type === 'schedule.failed'">
+          <span class="text-violet-300">{{ ev.data.expression }}</span>
+          <span class="text-red-400 ml-2">{{ ev.data.error }}</span>
         </template>
         <template v-else>
           {{ JSON.stringify(ev.data).substring(0, 120) }}

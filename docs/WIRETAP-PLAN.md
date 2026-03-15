@@ -1458,14 +1458,32 @@ Start with Phase 0, verify everything works, then proceed to Phase 1A.
 - [x] Phase 2A: All PHP listeners (queries, exceptions, jobs, cache, mail, notifications, HTTP client, transactions, auth, artisan, schedule, gate, vardumper, validation, broadcasts)
 - [x] Phase 2B: Go correlator (job linking, trace tree builder)
 - [x] Phase 2C: Go analyzer (N+1, duplicate query, slow query detection)
-- [x] Phase 3: SMTP server (go-smtp + enmime, email parsing, raw storage, attachment download)
+- [x] Phase 3: SMTP sink (dumb accept+discard, email capture via PHP events)
 - [x] Phase 4: Vue UI (Dashboard, Requests, Trace detail, Exceptions, Jobs, Mail viewer, Broadcasts, Settings)
+- [x] Phase 4B: Dashboard with ECharts (timeline, response time, status donut, slow endpoints, period selector 1h/24h/7d)
+- [x] Phase 4H: Broadcasts page + detail page with channel types (public/private/presence)
+- [x] Phase 4I: Settings page (server status, WebSocket, config hints)
 - [x] Phase 4J: WebSocket real-time updates
 - [x] Phase 5: Config, retention, prod Dockerfile with go:embed, graceful shutdown
 - [x] Phase 6: PHP package polish (Redis driver, all collectors, config flags)
-- [x] Mail viewer: HTML preview in iframe, HTML/Text toggle, attachment download, raw .eml download
+- [x] Mail viewer: HTML preview in iframe, HTML/Text toggle, attachment download via PHP events
 - [x] Job correlation: request → ProcessOrder child trace verified
 - [x] N+1 detection: warning flags + messages working
+
+### Done (2026-03-15)
+- [x] Refactor: single email pipeline — PHP captures via MessageSent event, SMTP is dumb sink, removed enmime
+- [x] Broadcast listener: ShouldBroadcast events via Event::listen('*'), channel types (public/private/presence)
+- [x] Dashboard: ECharts (requests timeline, response time avg/p95, status codes donut), period selector, stats cards (requests, jobs, exceptions, emails, avg, median, p95, req/min), slow endpoints, recent activity
+- [x] Trace tree: recursive accordion (children collapsed by default, click to expand), human-readable event display, Open buttons for mail/broadcast, status badges on job.end
+- [x] UI consistency: tabular layout for all list pages (Requests, Jobs, Mail, Exceptions, Broadcasts)
+- [x] Pagination component: reusable across all pages, 25/50/100 per page selector
+- [x] Constants: TraceType, EventType, JobStatus, ROOT_TRACE_TYPES — no magic strings
+- [x] MethodBadge: colored backgrounds (GET green, POST amber, PUT sky, PATCH orange, DELETE red)
+- [x] Dashboard stats cards clickable → navigate to corresponding pages
+- [x] Slow endpoints clickable → Requests filtered by URI
+- [x] URI search filter in Requests page
+- [x] Requests page: only HTTP requests (no jobs), type filter removed
+- [x] Dashboard: Recent Activity shows root types only (request, command, schedule), not jobs
 
 ---
 

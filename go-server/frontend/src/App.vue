@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings } from 'lucide-vue-next'
+import { LayoutDashboard, Radio, Bug, Briefcase, Mail, Activity, Podcast, Settings, Terminal, Clock } from 'lucide-vue-next'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/requests', label: 'Requests', icon: Activity },
-  { to: '/exceptions', label: 'Exceptions', icon: Bug },
+  { to: '/commands', label: 'Commands', icon: Terminal },
+  { to: '/schedule', label: 'Schedule', icon: Clock },
   { to: '/jobs', label: 'Jobs', icon: Briefcase },
+  { to: '/exceptions', label: 'Exceptions', icon: Bug },
   { to: '/mail', label: 'Mail', icon: Mail },
   { to: '/broadcasts', label: 'Broadcasts', icon: Podcast },
   { to: '/settings', label: 'Settings', icon: Settings },
