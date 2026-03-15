@@ -6,6 +6,19 @@ async function get<T>(path: string): Promise<T> {
   return res.json()
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+    throw new Error(data.error || `API error: ${res.status}`)
+  }
+  return res.json()
+}
+
 export interface Trace {
   rid: string
   parent_rid: string
@@ -86,4 +99,24 @@ export const api = {
   mailDetail: (id: string) => get<Email>(`/mail/${id}`),
   mailByTrace: (rid: string) => get<Email>(`/mail/by-trace/${rid}`),
   health: () => get<{ status: string }>('/health'),
+
+  getSettings: () => get<Record<string, string>>('/settings'),
+  updateSettings: (data: Record<string, string>) =>
+    fetch(`${BASE}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => { if (!r.ok) throw new Error(`API error: ${r.status}`); return r.json() }),
+
+  replayConfig: () => get<{ enabled: boolean }>('/replay/config'),
+  replayRequest: (data: { method: string; uri: string; headers?: Record<string, string>; body?: string }) =>
+    post<{ success: boolean; status?: number; error?: string }>('/replay/request', data),
+  retryJob: (uuid: string) =>
+    post<{ success: boolean; output?: string; error?: string }>('/replay/job', { uuid }),
+  dispatchJob: (data: { job_serialized: string; job_payload?: Record<string, unknown> }) =>
+    post<{ success: boolean; job_class?: string; error?: string }>('/replay/dispatch-job', data),
+  replayBroadcast: (data: { event: string; channels: { name: string; type: string }[]; payload: Record<string, unknown> }) =>
+    post<{ success: boolean; error?: string }>('/replay/broadcast', data),
+  replayCommand: (data: { command: string; input?: string }) =>
+    post<{ success: boolean; output?: string; exit_code?: number; error?: string }>('/replay/command', data),
 }

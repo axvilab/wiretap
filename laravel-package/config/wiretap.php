@@ -31,7 +31,24 @@ return [
         'transactions' => true,
         'commands' => true,
         'schedule' => true,
-        'request_body' => false,
+        'request_body' => true,
+        'job_payload' => true,
+    ],
+
+    'replay' => [
+        'enabled' => env('WIRETAP_REPLAY_ENABLED', false),
+        'secret' => env('WIRETAP_REPLAY_SECRET', ''),
+    ],
+
+    'ignore' => [
+        'requests' => ['_wiretap/*', '_debugbar/*', 'telescope/*', 'horizon/*'],
+        'jobs' => [],
+        'commands' => [
+            'schedule:run', 'schedule:finish', 'queue:work', 'queue:listen', 'queue:restart',
+            'horizon:*', 'config:*', 'route:*', 'cache:*', 'view:*',
+            'package:discover', 'tinker', 'list', 'help', 'env',
+        ],
+        'broadcasts' => [],
     ],
 
     'mask_fields' => [

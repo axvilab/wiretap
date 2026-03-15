@@ -85,7 +85,7 @@ class Wiretap
     {
         $request = request();
 
-        return [
+        $meta = [
             'method' => $request->method(),
             'uri' => $request->path(),
             'status' => http_response_code() ?: 200,
@@ -93,6 +93,16 @@ class Wiretap
             'memory_mb' => round((memory_get_usage(true) - static::$startMemory) / 1024 / 1024, 2),
             'ip' => $request->ip(),
         ];
+
+        // Store request body in meta for replay
+        if (config('wiretap.collect.request_body', true)) {
+            $input = $request->all();
+            if (! empty($input)) {
+                $meta['request_body'] = json_encode(static::maskSensitive($input));
+            }
+        }
+
+        return $meta;
     }
 
     protected static function buildJobMeta(): array
@@ -162,6 +172,51 @@ class Wiretap
             'duration_ms' => round((microtime(true) - static::$startTime) * 1000, 2),
             'memory_mb' => round((memory_get_usage(true) - static::$startMemory) / 1024 / 1024, 2),
         ];
+    }
+
+    public static function shouldIgnore(string $group, string $value): bool
+    {
+        $patterns = config("wiretap.ignore.{$group}", []);
+        foreach ($patterns as $pattern) {
+            if ($pattern === $value) {
+                return true;
+            }
+            // Wildcard matching: horizon:* matches horizon:work, horizon:pause, etc.
+            if (str_contains($pattern, '*') && fnmatch($pattern, $value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static function extractJobProperties(object $job): array
+    {
+        $reflection = new \ReflectionClass($job);
+        $properties = [];
+
+        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isInitialized($job)) {
+                $value = $prop->getValue($job);
+                $properties[$prop->getName()] = is_scalar($value) || is_null($value) || is_array($value)
+                    ? $value
+                    : (string) $value;
+            }
+        }
+
+        return $properties;
+    }
+
+    public static function maskSensitive(array $data): array
+    {
+        $fields = config('wiretap.mask_fields', []);
+        foreach ($data as $key => &$value) {
+            if (is_array($value)) {
+                $value = static::maskSensitive($value);
+            } elseif (in_array(strtolower($key), $fields, true)) {
+                $value = '***';
+            }
+        }
+        return $data;
     }
 
     protected static function buildGenericMeta(): array

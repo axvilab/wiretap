@@ -14,12 +14,31 @@ class WiretapMiddleware
             return $next($request);
         }
 
+        if (Wiretap::shouldIgnore('requests', $request->path())) {
+            return $next($request);
+        }
+
         Wiretap::start();
-        Wiretap::send('request.start', [
+
+        $data = [
             'method' => $request->method(),
             'uri' => $request->path(),
             'ip' => $request->ip(),
-        ]);
+        ];
+
+        if (config('wiretap.collect.request_body', true)) {
+            $data['headers'] = collect($request->headers->all())
+                ->map(fn ($v) => $v[0] ?? '')
+                ->except(['cookie', 'authorization'])
+                ->toArray();
+
+            $input = $request->all();
+            if (! empty($input)) {
+                $data['body'] = Wiretap::maskSensitive($input);
+            }
+        }
+
+        Wiretap::send('request.start', $data);
 
         return $next($request);
     }

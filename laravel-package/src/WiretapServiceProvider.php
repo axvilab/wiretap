@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class WiretapServiceProvider extends ServiceProvider
@@ -61,6 +62,10 @@ class WiretapServiceProvider extends ServiceProvider
             __DIR__ . '/../config/wiretap.php' => config_path('wiretap.php'),
         ], 'wiretap-config');
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([GenerateReplaySecretCommand::class]);
+        }
+
         /** @var \Illuminate\Foundation\Http\Kernel $kernel */
         $kernel = $this->app->make(Kernel::class);
         $kernel->pushMiddleware(WiretapMiddleware::class);
@@ -80,6 +85,7 @@ class WiretapServiceProvider extends ServiceProvider
         $this->registerVarDumper();
         $this->registerValidationListener();
         $this->registerBroadcastListener();
+        $this->registerReplayRoutes();
     }
 
     protected function registerQueryListener(): void
@@ -129,13 +135,38 @@ class WiretapServiceProvider extends ServiceProvider
         }
 
         Queue::before(function (JobProcessing $event) {
+            if (Wiretap::shouldIgnore('jobs', $event->job->resolveName())) {
+                return;
+            }
             // Each job gets its own rid
             Wiretap::start();
-            Wiretap::send('job.start', [
+
+            $jobData = [
                 'job_uuid' => $event->job->uuid(),
                 'job_class' => $event->job->resolveName(),
                 'queue' => $event->job->getQueue(),
-            ]);
+            ];
+
+            // Capture job payload for replay
+            if (config('wiretap.collect.job_payload', true)) {
+                try {
+                    $queuePayload = $event->job->payload();
+                    $serialized = $queuePayload['data']['command'] ?? '';
+                    if ($serialized !== '') {
+                        $jobObject = unserialize($serialized);
+                        $properties = Wiretap::extractJobProperties($jobObject);
+                        $properties = Wiretap::maskSensitive($properties);
+
+                        $jobData['job_payload'] = $properties;
+                        $jobData['job_serialized'] = base64_encode($serialized);
+                        $jobData['payload_size'] = strlen($serialized);
+                    }
+                } catch (\Throwable) {
+                    // Can't extract payload — skip silently
+                }
+            }
+
+            Wiretap::send('job.start', $jobData);
         });
 
         Queue::after(function (JobProcessed $event) {
@@ -309,8 +340,8 @@ class WiretapServiceProvider extends ServiceProvider
             Http::globalRequestMiddleware(function ($request) {
                 if (Wiretap::$rid !== '') {
                     Wiretap::send('http.out.start', [
-                        'method' => $request->method(),
-                        'url' => (string) $request->url(),
+                        'method' => $request->getMethod(),
+                        'url' => (string) $request->getUri(),
                     ]);
                 }
                 return $request;
@@ -319,7 +350,7 @@ class WiretapServiceProvider extends ServiceProvider
             Http::globalResponseMiddleware(function ($response) {
                 if (Wiretap::$rid !== '') {
                     Wiretap::send('http.out.end', [
-                        'status' => $response->status(),
+                        'status' => $response->getStatusCode(),
                     ]);
                 }
                 return $response;
@@ -377,6 +408,9 @@ class WiretapServiceProvider extends ServiceProvider
     protected function registerArtisanListeners(): void
     {
         Event::listen(\Illuminate\Console\Events\CommandStarting::class, function ($event) {
+            if (Wiretap::shouldIgnore('commands', $event->command ?? '')) {
+                return;
+            }
             Wiretap::start();
             Wiretap::send('command.start', [
                 'command' => $event->command,
@@ -481,13 +515,13 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerBroadcastListener(): void
     {
-        // Listen to all events and catch ShouldBroadcast implementations
         Event::listen('*', function (string $eventName, array $data) {
             if (Wiretap::$rid === '') return;
 
             $event = $data[0] ?? null;
             if (! is_object($event)) return;
             if (! $event instanceof \Illuminate\Contracts\Broadcasting\ShouldBroadcast) return;
+            if (Wiretap::shouldIgnore('broadcasts', get_class($event))) return;
 
             $rawChannels = method_exists($event, 'broadcastOn')
                 ? (is_array($event->broadcastOn()) ? $event->broadcastOn() : [$event->broadcastOn()])
@@ -511,6 +545,20 @@ class WiretapServiceProvider extends ServiceProvider
                 'channels' => $channels,
                 'payload' => method_exists($event, 'broadcastWith') ? $event->broadcastWith() : [],
             ]);
+        });
+    }
+
+    protected function registerReplayRoutes(): void
+    {
+        if (! config('wiretap.replay.enabled', false)) {
+            return;
+        }
+
+        Route::prefix('_wiretap')->group(function () {
+            Route::post('retry-job', [ReplayController::class, 'retryJob']);
+            Route::post('dispatch-job', [ReplayController::class, 'dispatchJob']);
+            Route::post('replay-broadcast', [ReplayController::class, 'replayBroadcast']);
+            Route::post('replay-command', [ReplayController::class, 'replayCommand']);
         });
     }
 }

@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { api, type Email } from '@/api'
 import Pagination from '@/components/Pagination.vue'
+import NewItemsBanner from '@/components/NewItemsBanner.vue'
 
 const emails = ref<Email[]>([])
 const total = ref(0)
@@ -28,6 +29,8 @@ function timeAgo(ts: number): string {
 <template>
   <div class="p-6 space-y-4">
     <h1 class="text-2xl font-bold">Mail ({{ total }})</h1>
+
+    <NewItemsBanner :mail-only="true" @refresh="load" />
 
     <div v-if="!emails.length" class="text-zinc-500 py-8 text-center">No emails intercepted yet</div>
 

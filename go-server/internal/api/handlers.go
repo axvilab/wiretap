@@ -122,6 +122,42 @@ func (h *handlers) downloadAttachment(w http.ResponseWriter, r *http.Request) {
 	w.Write(att.Content)
 }
 
+func (h *handlers) getSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.store.GetAllSettings()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, settings)
+}
+
+func (h *handlers) updateSettings(w http.ResponseWriter, r *http.Request) {
+	var body map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	allowed := map[string]bool{
+		"app_url":         true,
+		"replay_secret":   true,
+		"slow_query_ms":   true,
+		"slow_request_ms": true,
+	}
+
+	for k, v := range body {
+		if !allowed[k] {
+			continue
+		}
+		if err := h.store.SetSetting(k, v); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)

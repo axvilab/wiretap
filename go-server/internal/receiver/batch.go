@@ -74,7 +74,8 @@ func (bw *BatchWriter) flush() {
 		if err != nil {
 			continue
 		}
-		warnings := analyzer.Analyze(trace)
+		thresholds := analyzer.LoadThresholds(bw.store)
+		warnings := analyzer.Analyze(trace, thresholds)
 		if len(warnings) > 0 {
 			bw.store.UpdateWarnings(p.RID, warnings)
 			trace, _ = bw.store.GetTrace(p.RID) // reload with warnings

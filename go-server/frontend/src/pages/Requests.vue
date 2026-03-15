@@ -2,9 +2,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api, type Trace } from '@/api'
-import { useWebSocket } from '@/hooks/useWebSocket'
 import { TraceType } from '@/constants'
 import Pagination from '@/components/Pagination.vue'
+import NewItemsBanner from '@/components/NewItemsBanner.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import MethodBadge from '@/components/MethodBadge.vue'
 import WarningIcons from '@/components/WarningIcons.vue'
@@ -17,13 +17,6 @@ const perPage = ref(25)
 const methodFilter = ref('')
 const uriFilter = ref((route.query.uri as string) || '')
 const typeFilter = TraceType.REQUEST
-
-useWebSocket((event) => {
-  if (event.type === 'trace.new' && event.data && event.data.type === TraceType.REQUEST && page.value === 1) {
-    traces.value = [event.data, ...traces.value].slice(0, perPage.value)
-    total.value++
-  }
-})
 
 async function load() {
   const params = new URLSearchParams({ page: String(page.value), per_page: String(perPage.value) })
@@ -68,6 +61,8 @@ function parseMeta(t: Trace) {
         </select>
       </div>
     </div>
+
+    <NewItemsBanner :types="[TraceType.REQUEST]" @refresh="load" />
 
     <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
       <table class="w-full text-sm">

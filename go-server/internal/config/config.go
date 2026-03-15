@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	StoragePath string `json:"storage_path"`
-	WebPort     string `json:"web_port"`
-	IngestPort  string `json:"ingest_port"`
-	SMTPPort    string `json:"smtp_port"`
-	RetentionDays int  `json:"retention_days"`
-	BatchSize   int    `json:"batch_size"`
-	FlushMs     int    `json:"flush_ms"`
+	StoragePath   string `json:"storage_path"`
+	WebPort       string `json:"web_port"`
+	IngestPort    string `json:"ingest_port"`
+	SMTPPort      string `json:"smtp_port"`
+	RetentionDays int    `json:"retention_days"`
+	BatchSize     int    `json:"batch_size"`
+	FlushMs       int    `json:"flush_ms"`
 }
 
 func Load() *Config {

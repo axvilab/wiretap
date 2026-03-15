@@ -37,6 +37,19 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r.Get("/api/mail/{id}/attachment", h.downloadAttachment)
 	r.Get("/api/ws", wsHub.HandleWS)
 
+	// Settings API
+	r.Get("/api/settings", h.getSettings)
+	r.Put("/api/settings", h.updateSettings)
+
+	// Replay proxy
+	rh := newReplayHandler(store)
+	r.Get("/api/replay/config", rh.configHandler)
+	r.Post("/api/replay/request", rh.replayRequest)
+	r.Post("/api/replay/job", rh.proxy("retry-job"))
+	r.Post("/api/replay/dispatch-job", rh.proxy("dispatch-job"))
+	r.Post("/api/replay/broadcast", rh.proxy("replay-broadcast"))
+	r.Post("/api/replay/command", rh.proxy("replay-command"))
+
 	// Serve embedded frontend (prod) — fallback to index.html for SPA
 	if len(frontendFS) > 0 && frontendFS[0] != nil {
 		dist := frontendFS[0]

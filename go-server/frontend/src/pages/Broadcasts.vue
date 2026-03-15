@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { api, type Trace } from '@/api'
-import { useWebSocket } from '@/hooks/useWebSocket'
 import { EventType } from '@/constants'
 import Pagination from '@/components/Pagination.vue'
+import ReplayModal from '@/components/ReplayModal.vue'
+import NewItemsBanner from '@/components/NewItemsBanner.vue'
 
 interface BroadcastChannel {
   name: string
@@ -15,23 +16,30 @@ interface BroadcastRow {
   ts: number
   event: string
   channels: BroadcastChannel[]
+  payload: Record<string, unknown>
 }
 
 const broadcasts = ref<BroadcastRow[]>([])
 const page = ref(1)
 const perPage = ref(25)
+const replayEnabled = ref(false)
+const showReplay = ref(false)
+const replayData = ref<Record<string, any>>({})
 
-onMounted(async () => {
+async function load() {
+  broadcasts.value = []
   const data = await api.requests('per_page=200')
   for (const t of data.traces) {
     extractBroadcasts(t)
   }
-})
+}
 
-useWebSocket((event) => {
-  if (event.type === 'trace.new' && event.data) {
-    extractBroadcasts(event.data)
-  }
+onMounted(async () => {
+  await load()
+  try {
+    const cfg = await api.replayConfig()
+    replayEnabled.value = cfg.enabled
+  } catch {}
 })
 
 function extractBroadcasts(trace: Trace) {
@@ -44,6 +52,7 @@ function extractBroadcasts(trace: Trace) {
           ts: trace.ts_start + ev.ts,
           event: ev.data.event,
           channels: ev.data.channels || [],
+          payload: ev.data.payload || {},
         })
       }
     }
@@ -70,6 +79,8 @@ const paged = () => broadcasts.value.slice((page.value - 1) * perPage.value, pag
   <div class="p-6 space-y-4">
     <h1 class="text-2xl font-bold">Broadcasts ({{ broadcasts.length }})</h1>
 
+    <NewItemsBanner :broadcast-only="true" @refresh="load" />
+
     <div v-if="!broadcasts.length" class="text-zinc-500 py-8 text-center">No broadcasts captured yet</div>
 
     <div v-if="broadcasts.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
@@ -79,6 +90,7 @@ const paged = () => broadcasts.value.slice((page.value - 1) * perPage.value, pag
             <th class="px-4 py-2 text-left">Time</th>
             <th class="px-4 py-2 text-left">Event</th>
             <th class="px-4 py-2 text-left">Channels</th>
+            <th v-if="replayEnabled" class="px-4 py-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -103,11 +115,25 @@ const paged = () => broadcasts.value.slice((page.value - 1) * perPage.value, pag
                 </span>
               </div>
             </td>
+            <td v-if="replayEnabled" class="px-4 py-2 text-right">
+              <button
+                @click.stop="replayData = { event: b.event, channels: b.channels, payload: b.payload }; showReplay = true"
+                class="px-2 py-0.5 text-xs bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 rounded transition-colors"
+              >Replay</button>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <Pagination v-model:page="page" v-model:per-page="perPage" :total="broadcasts.length" />
+
+    <ReplayModal
+      :show="showReplay"
+      type="broadcast"
+      :data="replayData"
+      @close="showReplay = false"
+      @success="showReplay = false"
+    />
   </div>
 </template>

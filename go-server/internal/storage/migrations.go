@@ -34,6 +34,10 @@ func (s *Store) migrate() error {
 			started_at    DOUBLE DEFAULT 0,
 			finished_at   DOUBLE DEFAULT 0
 		)`,
+		`CREATE TABLE IF NOT EXISTS settings (
+			key   VARCHAR PRIMARY KEY,
+			value VARCHAR NOT NULL DEFAULT ''
+		)`,
 		`CREATE TABLE IF NOT EXISTS emails (
 			id              VARCHAR PRIMARY KEY,
 			from_addr       VARCHAR NOT NULL,

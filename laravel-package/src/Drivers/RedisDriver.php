@@ -15,7 +15,8 @@ class RedisDriver implements DriverInterface
     public function send(string $payload): void
     {
         try {
-            Redis::connection($this->connection)->rpush($this->queue, $payload);
+            $compressed = gzencode($payload, 6);
+            Redis::connection($this->connection)->rpush($this->queue, $compressed);
         } catch (\Throwable) {
             // silently fail
         }

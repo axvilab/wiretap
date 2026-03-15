@@ -4,6 +4,7 @@ import { api, type Trace } from '@/api'
 import MethodBadge from '@/components/MethodBadge.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import Pagination from '@/components/Pagination.vue'
+import NewItemsBanner from '@/components/NewItemsBanner.vue'
 
 const traces = ref<Trace[]>([])
 const total = ref(0)
@@ -39,6 +40,8 @@ function timeAgo(ts: number): string {
 <template>
   <div class="p-6 space-y-4">
     <h1 class="text-2xl font-bold">Exceptions ({{ total }})</h1>
+
+    <NewItemsBanner :exceptions-only="true" @refresh="load" />
 
     <div v-if="!traces.length" class="text-zinc-500 py-8 text-center">No exceptions found</div>
 

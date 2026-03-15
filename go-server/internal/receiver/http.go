@@ -1,7 +1,9 @@
 package receiver
 
 import (
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -23,8 +25,14 @@ func (r *HTTPReceiver) Handler() http.HandlerFunc {
 			return
 		}
 
+		body, err := readBody(req)
+		if err != nil {
+			http.Error(w, "failed to read body", http.StatusBadRequest)
+			return
+		}
+
 		var payload storage.TracePayload
-		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+		if err := json.Unmarshal(body, &payload); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
@@ -42,6 +50,19 @@ func (r *HTTPReceiver) Handler() http.HandlerFunc {
 		w.WriteHeader(http.StatusAccepted)
 		w.Write([]byte(`{"status":"accepted"}`))
 	}
+}
+
+// readBody handles both plain and gzip-compressed request bodies
+func readBody(req *http.Request) ([]byte, error) {
+	if req.Header.Get("Content-Encoding") == "gzip" {
+		gr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer gr.Close()
+		return io.ReadAll(gr)
+	}
+	return io.ReadAll(req.Body)
 }
 
 func metaURI(p *storage.TracePayload) string {

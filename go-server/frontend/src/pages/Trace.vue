@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { api, type TraceNode } from '@/api'
 import StatusBadge from '@/components/StatusBadge.vue'
 import MethodBadge from '@/components/MethodBadge.vue'
 import TraceTree from '@/components/TraceTree.vue'
+import ReplayModal from '@/components/ReplayModal.vue'
 
 const props = defineProps<{ rid: string }>()
 const tree = ref<TraceNode | null>(null)
 const error = ref('')
+const replayEnabled = ref(false)
+const showReplay = ref(false)
 
 async function loadTrace(rid: string) {
   tree.value = null
@@ -21,6 +24,13 @@ async function loadTrace(rid: string) {
 
 watch(() => props.rid, (rid) => loadTrace(rid), { immediate: true })
 
+onMounted(async () => {
+  try {
+    const cfg = await api.replayConfig()
+    replayEnabled.value = cfg.enabled
+  } catch {}
+})
+
 function parseWarnings(json: string) {
   try { return JSON.parse(json) } catch { return [] }
 }
@@ -28,6 +38,47 @@ function parseWarnings(json: string) {
 function parseMeta(json: string) {
   try { return JSON.parse(json) } catch { return {} }
 }
+
+const replayType = computed(() => {
+  if (!tree.value) return 'request'
+  const t = tree.value.trace.type
+  if (t === 'job') return 'job'
+  if (t === 'command') return 'command'
+  return 'request'
+})
+
+const replayData = computed(() => {
+  if (!tree.value) return {}
+  const t = tree.value.trace
+  const meta = parseMeta(t.meta_json)
+  switch (replayType.value) {
+    case 'job': {
+      const data: Record<string, any> = { uuid: meta.job_uuid, job_class: meta.job_class, status: meta.status }
+      try {
+        const events = JSON.parse(t.events_json)
+        const startEvent = events.find((ev: any) => ev.type === 'job.start')
+        if (startEvent?.data) {
+          data.job_payload = startEvent.data.job_payload || {}
+          data.job_serialized = startEvent.data.job_serialized || ''
+          data.payload_size = startEvent.data.payload_size || 0
+        }
+      } catch {}
+      return data
+    }
+    case 'command':
+      return { command: meta.command, input: meta.input || '' }
+    default:
+      return { method: t.method, uri: t.uri, body: meta.request_body || '' }
+  }
+})
+
+const replayLabel = computed(() => {
+  switch (replayType.value) {
+    case 'job': return 'Retry Job'
+    case 'command': return 'Replay Command'
+    default: return 'Replay Request'
+  }
+})
 </script>
 
 <template>
@@ -42,6 +93,11 @@ function parseMeta(json: string) {
         <span class="font-mono text-lg">{{ tree.trace.uri || parseMeta(tree.trace.meta_json).job_class || tree.trace.type }}</span>
         <StatusBadge v-if="tree.trace.status" :status="tree.trace.status" />
         <span class="text-zinc-500 text-sm">{{ tree.trace.duration_ms.toFixed(1) }}ms</span>
+        <button
+          v-if="replayEnabled"
+          @click="showReplay = true"
+          class="ml-auto px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 rounded font-medium transition-colors"
+        >{{ replayLabel }}</button>
       </div>
 
       <!-- Warnings -->
@@ -62,5 +118,13 @@ function parseMeta(json: string) {
         <TraceTree :node="tree" :depth="0" />
       </div>
     </template>
+
+    <ReplayModal
+      :show="showReplay"
+      :type="replayType as any"
+      :data="replayData"
+      @close="showReplay = false"
+      @success="showReplay = false"
+    />
   </div>
 </template>
