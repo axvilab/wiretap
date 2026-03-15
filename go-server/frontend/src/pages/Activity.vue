@@ -86,7 +86,7 @@ const TYPE_STYLES: Record<string, string> = {
             <td class="px-4 py-2"><StatusBadge v-if="t.status" :status="t.status" /></td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.duration_ms.toFixed(1) }}ms</td>
             <td class="px-4 py-2 text-right font-mono text-xs">{{ t.query_count }}</td>
-            <td class="px-4 py-2"><WarningIcons :trace="t" /></td>
+            <td class="px-4 py-2 whitespace-nowrap"><WarningIcons :trace="t" /></td>
           </tr>
         </tbody>
       </table>

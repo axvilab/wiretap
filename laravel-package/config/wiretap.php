@@ -44,7 +44,7 @@ return [
     ],
 
     'ignore' => [
-        'requests' => ['_wiretap/*', '_debugbar/*', 'telescope/*', 'horizon/*'],
+        'requests' => ['_wiretap/*', '_wiretap_test/*', '_test/*', '_debugbar/*', 'telescope/*', 'horizon/*'],
         'jobs' => [],
         'commands' => [
             'schedule:run', 'schedule:finish', 'queue:work', 'queue:listen', 'queue:restart',
