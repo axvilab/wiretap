@@ -5,7 +5,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import VChart from 'vue-echarts'
 import { Activity, Database, Bug, Mail, Briefcase, Clock, Zap } from 'lucide-vue-next'
 
-const period = ref<'1h' | '24h' | '7d'>('1h')
+const period = ref<string>('1h')
 const data = ref<DashboardData | null>(null)
 
 async function load() {
@@ -83,10 +83,10 @@ const statusChart = computed(() => {
       <h1 class="text-2xl font-bold">Dashboard</h1>
       <div class="flex bg-zinc-800 rounded p-0.5">
         <button
-          v-for="p in (['1h', '24h', '7d'] as const)"
+          v-for="p in ['1m', '5m', '15m', '30m', '1h', '24h', '7d']"
           :key="p"
           @click="period = p"
-          class="px-3 py-1 text-sm rounded transition-colors"
+          class="px-2 py-1 text-xs rounded transition-colors"
           :class="period === p ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'"
         >{{ p }}</button>
       </div>

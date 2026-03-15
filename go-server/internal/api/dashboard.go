@@ -2,24 +2,37 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 )
 
 func (h *handlers) dashboard(w http.ResponseWriter, r *http.Request) {
-	hours := 1
+	minutes := 60
 	if p := r.URL.Query().Get("period"); p != "" {
 		switch p {
+		case "1m":
+			minutes = 1
+		case "5m":
+			minutes = 5
+		case "15m":
+			minutes = 15
+		case "30m":
+			minutes = 30
+		case "1h":
+			minutes = 60
 		case "24h":
-			hours = 24
+			minutes = 60 * 24
 		case "7d":
-			hours = 24 * 7
+			minutes = 60 * 24 * 7
 		default:
-			hours = 1
+			minutes = 60
 		}
 	}
 
-	since := float64(time.Now().Add(-time.Duration(hours) * time.Hour).Unix())
+	hours := minutes / 60
+	if hours < 1 {
+		hours = 1
+	}
+	since := float64(time.Now().Add(-time.Duration(minutes) * time.Minute).Unix())
 
 	stats, err := h.store.DashboardStats(since)
 	if err != nil {
@@ -52,7 +65,7 @@ func (h *handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, map[string]any{
-		"period":           strconv.Itoa(hours) + "h",
+		"period":           r.URL.Query().Get("period"),
 		"stats":            stats,
 		"timeline":         timeline,
 		"status_breakdown": statusBreakdown,
