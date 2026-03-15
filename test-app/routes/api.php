@@ -152,6 +152,18 @@ Route::post('/form-request-demo', function (\App\Http\Requests\CreateOrderReques
     return response()->json(['valid' => true, 'data' => $request->validated()]);
 });
 
+// === Model events (create, update, delete) ===
+Route::get('/model-demo', function () {
+    $user = \App\Models\User::create([
+        'name' => 'Test User ' . rand(100, 999),
+        'email' => 'test' . rand(100, 999) . '@example.com',
+        'password' => bcrypt('password'),
+    ]);
+    $user->update(['name' => 'Updated User']);
+    $user->delete();
+    return response()->json(['user_id' => $user->id, 'actions' => 'created, updated, deleted']);
+});
+
 // === All-in-one demo ===
 Route::get('/kitchen-sink', function () {
     Log::info('Kitchen sink started');

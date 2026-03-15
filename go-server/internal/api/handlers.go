@@ -160,6 +160,32 @@ func (h *handlers) updateSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"status": "ok"})
 }
 
+func (h *handlers) storageStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.store.StorageStats()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, stats)
+}
+
+func (h *handlers) clearData(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Days int `json:"days"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Days < 0 {
+		// Clear all
+		body.Days = 0
+	}
+
+	if err := h.store.ClearData(body.Days); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)

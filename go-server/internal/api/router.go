@@ -51,6 +51,8 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	// Settings API
 	r.Get("/api/settings", h.getSettings)
 	r.Put("/api/settings", h.updateSettings)
+	r.Get("/api/storage/stats", h.storageStats)
+	r.Post("/api/storage/clear", h.clearData)
 
 	// Replay proxy
 	rh := newReplayHandler(store)

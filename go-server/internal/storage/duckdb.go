@@ -8,7 +8,8 @@ import (
 )
 
 type Store struct {
-	db *sql.DB
+	db   *sql.DB
+	path string
 }
 
 func New(path string) (*Store, error) {
@@ -19,7 +20,7 @@ func New(path string) (*Store, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping duckdb: %w", err)
 	}
-	s := &Store{db: db}
+	s := &Store{db: db, path: path}
 	if err := s.migrate(); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}

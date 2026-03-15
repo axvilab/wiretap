@@ -34,6 +34,8 @@ return [
         'commands' => true,
         'schedule' => true,
         'logs' => true,
+        'models' => true,
+        'views' => true,
         'request_body' => true,
         'job_payload' => true,
     ],
@@ -52,6 +54,8 @@ return [
             'package:discover', 'tinker', 'list', 'help', 'env',
         ],
         'broadcasts' => [],
+        'models' => [],
+        'views' => [],
     ],
 
     'mask_fields' => [

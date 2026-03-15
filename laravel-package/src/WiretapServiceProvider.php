@@ -86,6 +86,8 @@ class WiretapServiceProvider extends ServiceProvider
         $this->registerValidationListener();
         $this->registerBroadcastListener();
         $this->registerLogListener();
+        $this->registerModelListener();
+        $this->registerViewListener();
         $this->registerReplayRoutes();
     }
 
@@ -337,22 +339,75 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerHttpClientListeners(): void
     {
+        $maxResponseSize = 512 * 1024; // 512KB
+        $binaryTypes = ['image/', 'video/', 'audio/', 'application/pdf', 'application/zip', 'application/gzip', 'application/octet-stream'];
+
         try {
             Http::globalRequestMiddleware(function ($request) {
                 if (Wiretap::$rid !== '') {
-                    Wiretap::send('http.out.start', [
+                    $data = [
                         'method' => $request->getMethod(),
                         'url' => (string) $request->getUri(),
-                    ]);
+                    ];
+
+                    // Capture request headers
+                    $headers = [];
+                    foreach ($request->getHeaders() as $name => $values) {
+                        $headers[$name] = implode(', ', $values);
+                    }
+                    unset($headers['Authorization'], $headers['authorization']);
+                    $data['headers'] = $headers;
+
+                    // Capture request body
+                    $body = (string) $request->getBody();
+                    if ($body !== '') {
+                        $data['body'] = mb_substr($body, 0, 512 * 1024);
+                    }
+
+                    Wiretap::send('http.out.start', $data);
                 }
                 return $request;
             });
 
-            Http::globalResponseMiddleware(function ($response) {
+            Http::globalResponseMiddleware(function ($response) use ($maxResponseSize, $binaryTypes) {
                 if (Wiretap::$rid !== '') {
-                    Wiretap::send('http.out.end', [
+                    $data = [
                         'status' => $response->getStatusCode(),
-                    ]);
+                    ];
+
+                    // Capture response headers
+                    $responseHeaders = [];
+                    foreach ($response->getHeaders() as $name => $values) {
+                        $responseHeaders[$name] = implode(', ', $values);
+                    }
+                    $data['response_headers'] = $responseHeaders;
+
+                    // Capture response body — skip binary content
+                    $contentType = $responseHeaders['Content-Type'] ?? $responseHeaders['content-type'] ?? '';
+                    $isBinary = false;
+                    foreach ($binaryTypes as $type) {
+                        if (str_contains(strtolower($contentType), $type)) {
+                            $isBinary = true;
+                            break;
+                        }
+                    }
+
+                    if (! $isBinary) {
+                        $body = (string) $response->getBody();
+                        $size = strlen($body);
+                        if ($size <= $maxResponseSize) {
+                            $data['response_body'] = $body;
+                        } else {
+                            $data['response_body'] = mb_substr($body, 0, $maxResponseSize);
+                            $data['response_truncated'] = true;
+                        }
+                        $data['response_size'] = $size;
+                    } else {
+                        $data['response_body_skipped'] = 'binary content: ' . $contentType;
+                        $data['response_size'] = (int) ($responseHeaders['Content-Length'] ?? 0);
+                    }
+
+                    Wiretap::send('http.out.end', $data);
                 }
                 return $response;
             });
@@ -565,6 +620,56 @@ class WiretapServiceProvider extends ServiceProvider
                 'level' => $event->level,
                 'message' => $event->message,
                 'context' => !empty($event->context) ? array_slice($event->context, 0, 5) : [],
+            ]);
+        });
+    }
+
+    protected function registerModelListener(): void
+    {
+        if (! config('wiretap.collect.models', true)) {
+            return;
+        }
+
+        $events = ['eloquent.created: *', 'eloquent.updated: *', 'eloquent.deleted: *'];
+        foreach ($events as $pattern) {
+            Event::listen($pattern, function (string $eventName, array $data) {
+                if (Wiretap::$rid === '') return;
+
+                $model = $data[0] ?? null;
+                if (! is_object($model)) return;
+
+                // Extract action from event name: "eloquent.created: App\Models\User" → "created"
+                $action = explode('.', explode(': ', $eventName)[0])[1] ?? 'unknown';
+                $class = get_class($model);
+                $key = $model->getKey();
+
+                if (Wiretap::shouldIgnore('models', $class)) return;
+
+                Wiretap::send('model', [
+                    'action' => $action,
+                    'model' => $class,
+                    'key' => $key,
+                ]);
+            });
+        }
+    }
+
+    protected function registerViewListener(): void
+    {
+        if (! config('wiretap.collect.views', true)) {
+            return;
+        }
+
+        $this->app['view']->composer('*', function ($view) {
+            if (Wiretap::$rid === '') return;
+
+            $name = $view->getName();
+
+            if (Wiretap::shouldIgnore('views', $name)) return;
+
+            Wiretap::send('view', [
+                'name' => $name,
+                'path' => $view->getPath(),
             ]);
         });
     }

@@ -11,6 +11,7 @@ const tabs = [
   { id: 'general', label: 'General' },
   { id: 'security', label: 'Security' },
   { id: 'replay', label: 'Replay' },
+  { id: 'storage', label: 'Storage' },
   { id: 'info', label: 'Info' },
 ]
 
@@ -22,6 +23,12 @@ const slowRequestMs = ref('1000')
 const retentionDays = ref('7')
 const saving = ref(false)
 const saveResult = ref<{ ok: boolean; msg: string } | null>(null)
+
+// Storage
+const storageStats = ref<any>(null)
+const clearDays = ref(0)
+const clearing = ref(false)
+const clearResult = ref<{ ok: boolean; msg: string } | null>(null)
 
 // Change password
 const currentPassword = ref('')
@@ -47,7 +54,41 @@ onMounted(async () => {
     slowRequestMs.value = settings.slow_request_ms || '1000'
     retentionDays.value = settings.retention_days || '7'
   } catch {}
+
+  try {
+    const res = await fetch('/api/storage/stats')
+    storageStats.value = await res.json()
+  } catch {}
 })
+
+async function loadStorageStats() {
+  try {
+    const res = await fetch('/api/storage/stats')
+    storageStats.value = await res.json()
+  } catch {}
+}
+
+async function clearData() {
+  clearing.value = true
+  clearResult.value = null
+  try {
+    const res = await fetch('/api/storage/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: clearDays.value }),
+    })
+    if (res.ok) {
+      clearResult.value = { ok: true, msg: clearDays.value === 0 ? 'All data cleared' : `Data older than ${clearDays.value} days cleared` }
+      await loadStorageStats()
+    } else {
+      clearResult.value = { ok: false, msg: 'Failed to clear data' }
+    }
+  } catch (e: any) {
+    clearResult.value = { ok: false, msg: e.message }
+  } finally {
+    clearing.value = false
+  }
+}
 
 async function saveSettings() {
   saving.value = true
@@ -235,6 +276,49 @@ async function changePassword() {
           </button>
           <span v-if="saveResult" class="text-sm" :class="saveResult.ok ? 'text-emerald-400' : 'text-red-400'">{{ saveResult.msg }}</span>
         </div>
+      </div>
+    </template>
+
+    <!-- Storage tab -->
+    <template v-if="tab === 'storage'">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-4">
+        <h2 class="font-semibold text-sm">Database</h2>
+        <div v-if="storageStats" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-zinc-800 rounded p-3">
+            <div class="text-xs text-zinc-500 mb-1">DB Size</div>
+            <div class="text-lg font-bold">{{ storageStats.db_size_mb >= 1 ? storageStats.db_size_mb?.toFixed(1) + ' MB' : (storageStats.db_size_bytes / 1024)?.toFixed(1) + ' KB' }}</div>
+          </div>
+          <div class="bg-zinc-800 rounded p-3">
+            <div class="text-xs text-zinc-500 mb-1">Traces</div>
+            <div class="text-lg font-bold">{{ storageStats.total_traces?.toLocaleString() }}</div>
+          </div>
+          <div class="bg-zinc-800 rounded p-3">
+            <div class="text-xs text-zinc-500 mb-1">Emails</div>
+            <div class="text-lg font-bold">{{ storageStats.total_emails?.toLocaleString() }}</div>
+          </div>
+          <div class="bg-zinc-800 rounded p-3">
+            <div class="text-xs text-zinc-500 mb-1">Jobs</div>
+            <div class="text-lg font-bold">{{ storageStats.total_jobs?.toLocaleString() }}</div>
+          </div>
+        </div>
+        <button @click="loadStorageStats" class="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 rounded transition-colors">Refresh</button>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-4">
+        <h2 class="font-semibold text-sm">Clear Data</h2>
+        <div class="flex items-end gap-3">
+          <div>
+            <label class="text-xs text-zinc-400 mb-1 block">Clear data older than (days)</label>
+            <input v-model.number="clearDays" type="number" min="0" class="w-32 bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm font-mono" />
+            <p class="text-xs text-zinc-600 mt-1">Set to 0 to clear all data</p>
+          </div>
+          <button
+            @click="clearData"
+            :disabled="clearing"
+            class="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded font-medium transition-colors"
+          >{{ clearing ? 'Clearing...' : clearDays === 0 ? 'Clear All' : `Clear older than ${clearDays}d` }}</button>
+        </div>
+        <span v-if="clearResult" class="text-sm" :class="clearResult.ok ? 'text-emerald-400' : 'text-red-400'">{{ clearResult.msg }}</span>
       </div>
     </template>
 

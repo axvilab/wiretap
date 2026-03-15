@@ -35,6 +35,18 @@ export const EventType = {
   SCHEDULE_END: 'schedule.end',
   SCHEDULE_FAILED: 'schedule.failed',
   LOG: 'log',
+  MODEL: 'model',
+  VIEW: 'view',
+  AUTH_LOGIN: 'auth.login',
+  AUTH_LOGOUT: 'auth.logout',
+  AUTH_FAILED: 'auth.failed',
+  GATE: 'gate',
+  HTTP_OUT_START: 'http.out.start',
+  HTTP_OUT_END: 'http.out.end',
+  NOTIFICATION_SENDING: 'notification.sending',
+  NOTIFICATION_SENT: 'notification.sent',
+  DUMP: 'dump',
+  VALIDATION: 'validation',
 } as const
 
 export const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -58,4 +70,12 @@ export const EVENT_TYPE_COLORS: Record<string, string> = {
   [EventType.SCHEDULE_END]: 'text-violet-400',
   [EventType.SCHEDULE_FAILED]: 'text-red-400',
   [EventType.LOG]: 'text-blue-400',
+  [EventType.MODEL]: 'text-cyan-400',
+  [EventType.VIEW]: 'text-lime-400',
+  [EventType.AUTH_LOGIN]: 'text-emerald-400',
+  [EventType.AUTH_LOGOUT]: 'text-zinc-400',
+  [EventType.AUTH_FAILED]: 'text-red-400',
+  [EventType.GATE]: 'text-yellow-400',
+  [EventType.HTTP_OUT_START]: 'text-sky-400',
+  [EventType.HTTP_OUT_END]: 'text-sky-400',
 }
