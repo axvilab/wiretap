@@ -14,6 +14,10 @@ type Config struct {
 	RetentionDays int    `json:"retention_days"`
 	BatchSize     int    `json:"batch_size"`
 	FlushMs       int    `json:"flush_ms"`
+	RedisAddr     string `json:"redis_addr"`
+	RedisPassword string `json:"redis_password"`
+	RedisDB       int    `json:"redis_db"`
+	RedisQueue    string `json:"redis_queue"`
 }
 
 func Load() *Config {
@@ -25,6 +29,10 @@ func Load() *Config {
 		RetentionDays: envInt("WIRETAP_RETENTION_DAYS", 7),
 		BatchSize:     envInt("WIRETAP_BATCH_SIZE", 100),
 		FlushMs:       envInt("WIRETAP_FLUSH_MS", 500),
+		RedisAddr:     envOr("WIRETAP_REDIS_ADDR", ""),
+		RedisPassword: envOr("WIRETAP_REDIS_PASSWORD", ""),
+		RedisDB:       envInt("WIRETAP_REDIS_DB", 0),
+		RedisQueue:    envOr("WIRETAP_REDIS_QUEUE", "wiretap:events"),
 	}
 
 	// Try loading from config file

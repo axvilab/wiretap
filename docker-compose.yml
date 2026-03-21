@@ -20,6 +20,7 @@ services:
       - WIRETAP_WEB_PORT=8080
       - WIRETAP_INGEST_PORT=9090
       - WIRETAP_SMTP_PORT=1025
+      - WIRETAP_REDIS_ADDR=wiretap-redis:6379
     networks:
       - wiretap-net
 
@@ -66,7 +67,7 @@ services:
       - MAIL_PORT=1025
       - MAIL_ENCRYPTION=null
       - WIRETAP_ENABLED=true
-      - WIRETAP_DRIVER=http
+      - WIRETAP_DRIVER=${WIRETAP_DRIVER:-http}
       - WIRETAP_URL=http://wiretap-go:9090/ingest
       - BROADCAST_DRIVER=redis
     depends_on:
@@ -97,7 +98,7 @@ services:
       - REDIS_HOST=wiretap-redis
       - QUEUE_CONNECTION=redis
       - WIRETAP_ENABLED=true
-      - WIRETAP_DRIVER=http
+      - WIRETAP_DRIVER=${WIRETAP_DRIVER:-http}
       - WIRETAP_URL=http://wiretap-go:9090/ingest
     depends_on:
       - mysql

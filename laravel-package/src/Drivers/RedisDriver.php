@@ -16,7 +16,24 @@ class RedisDriver implements DriverInterface
     {
         try {
             $compressed = gzencode($payload, 6);
-            Redis::connection($this->connection)->rpush($this->queue, $compressed);
+
+            $redis = Redis::connection($this->connection);
+
+            // Get underlying client and push without Laravel prefix
+            $client = $redis->client();
+            if ($client instanceof \Redis) {
+                // PhpRedis
+                $prefix = $client->getOption(\Redis::OPT_PREFIX) ?: '';
+                $client->setOption(\Redis::OPT_PREFIX, '');
+                $client->rpush($this->queue, $compressed);
+                $client->setOption(\Redis::OPT_PREFIX, $prefix);
+            } elseif ($client instanceof \Predis\Client) {
+                // Predis — no prefix issue, direct call
+                $client->rpush($this->queue, [$compressed]);
+            } else {
+                // Fallback — use Laravel facade (may have prefix)
+                $redis->rpush($this->queue, $compressed);
+            }
         } catch (\Throwable) {
             // silently fail
         }

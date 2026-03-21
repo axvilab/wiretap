@@ -76,6 +76,16 @@ func main() {
 		}
 	}()
 
+	// Redis receiver (optional)
+	var redisCancel context.CancelFunc
+	if cfg.RedisAddr != "" {
+		var redisCtx context.Context
+		redisCtx, redisCancel = context.WithCancel(context.Background())
+		redisRecv := receiver.NewRedis(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, cfg.RedisQueue, ingestCh)
+		go redisRecv.Run(redisCtx)
+		log.Printf("Redis receiver connected to %s (queue: %s)", cfg.RedisAddr, cfg.RedisQueue)
+	}
+
 	log.Printf("Wiretap ready — UI :%s | Ingest :%s | SMTP :%s", cfg.WebPort, cfg.IngestPort, cfg.SMTPPort)
 
 	// Graceful shutdown
@@ -87,6 +97,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	if redisCancel != nil {
+		redisCancel()
+	}
 	close(ingestCh)
 	ingestServer.Shutdown(ctx)
 	webServer.Shutdown(ctx)
