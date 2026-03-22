@@ -64,8 +64,16 @@ class Wiretap
         ];
 
         try {
+            $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $maxSize = config('wiretap.max_payload_bytes', 50 * 1024 * 1024);
+            if (strlen($encoded) > $maxSize) {
+                // Drop oversized payload silently — log if possible
+                error_log("[Wiretap] payload too large (" . strlen($encoded) . " bytes), skipping");
+                static::reset();
+                return;
+            }
             $driver = app(DriverInterface::class);
-            $driver->send(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $driver->send($encoded);
         } catch (\Throwable) {
             // silently fail — never break the app
         }

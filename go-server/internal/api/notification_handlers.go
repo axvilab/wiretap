@@ -3,11 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/axvi/wiretap/internal/notifier"
 	"github.com/axvi/wiretap/internal/storage"
-	"github.com/go-chi/chi/v5"
 )
 
 type notificationHandlers struct {
@@ -63,6 +61,8 @@ func (h *notificationHandlers) createChannel(w http.ResponseWriter, r *http.Requ
 			return
 		}
 	}
+	ch.Name = maxLen(ch.Name, 255)
+	ch.Config = maxLen(ch.Config, 4096)
 	if ch.Name == "" {
 		ch.Name = ch.Type
 	}
@@ -77,7 +77,7 @@ func (h *notificationHandlers) createChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *notificationHandlers) updateChannel(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	var ch storage.NotificationChannel
 	if err := json.NewDecoder(r.Body).Decode(&ch); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -93,7 +93,7 @@ func (h *notificationHandlers) updateChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *notificationHandlers) deleteChannel(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	if err := h.store.DeleteNotificationChannel(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -103,7 +103,7 @@ func (h *notificationHandlers) deleteChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *notificationHandlers) testChannel(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	if err := h.notify.SendTest(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -158,7 +158,7 @@ func (h *notificationHandlers) createRule(w http.ResponseWriter, r *http.Request
 }
 
 func (h *notificationHandlers) updateRule(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	var rule storage.AlertRule
 	if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -173,7 +173,7 @@ func (h *notificationHandlers) updateRule(w http.ResponseWriter, r *http.Request
 }
 
 func (h *notificationHandlers) deleteRule(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	if err := h.store.DeleteAlertRule(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

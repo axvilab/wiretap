@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/axvi/wiretap/internal/storage"
-	"github.com/go-chi/chi/v5"
 )
 
 // SiteReloader is called when sites are added/updated/deleted.
@@ -51,7 +49,10 @@ func (h *monitorHandlers) createSite(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "url must be a valid http/https URL", http.StatusBadRequest)
 		return
 	}
-	site.URL = strings.TrimRight(site.URL, "/")
+	site.URL = maxLen(strings.TrimRight(site.URL, "/"), 2048)
+	site.Name = maxLen(site.Name, 255)
+	site.HealthURL = maxLen(site.HealthURL, 2048)
+	site.AuthJSON = maxLen(site.AuthJSON, 4096)
 	// Auto-disable SSL check for non-HTTPS URLs
 	if !strings.HasPrefix(site.URL, "https://") {
 		site.CheckSSL = false
@@ -72,7 +73,7 @@ func (h *monitorHandlers) createSite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *monitorHandlers) updateSite(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	var site storage.MonitorSite
 	if err := json.NewDecoder(r.Body).Decode(&site); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -90,7 +91,7 @@ func (h *monitorHandlers) updateSite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *monitorHandlers) deleteSite(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	if err := h.store.DeleteMonitorSite(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,7 +131,7 @@ func (h *monitorHandlers) status(w http.ResponseWriter, r *http.Request) {
 // --- Checks history ---
 
 func (h *monitorHandlers) checks(w http.ResponseWriter, r *http.Request) {
-	siteID, _ := strconv.Atoi(chi.URLParam(r, "siteID"))
+	siteID, ok := urlParamID(w, r, "siteID"); if !ok { return }; _ = siteID
 	limit := intParam(r, "limit", 100)
 	checks, err := h.store.ListMonitorChecks(siteID, limit)
 	if err != nil {
@@ -146,7 +147,7 @@ func (h *monitorHandlers) checks(w http.ResponseWriter, r *http.Request) {
 // --- SSL ---
 
 func (h *monitorHandlers) ssl(w http.ResponseWriter, r *http.Request) {
-	siteID, _ := strconv.Atoi(chi.URLParam(r, "siteID"))
+	siteID, ok := urlParamID(w, r, "siteID"); if !ok { return }; _ = siteID
 	ssl, err := h.store.GetMonitorSSL(siteID)
 	if err != nil {
 		writeJSON(w, nil)
@@ -158,7 +159,7 @@ func (h *monitorHandlers) ssl(w http.ResponseWriter, r *http.Request) {
 // --- Health ---
 
 func (h *monitorHandlers) health(w http.ResponseWriter, r *http.Request) {
-	siteID, _ := strconv.Atoi(chi.URLParam(r, "siteID"))
+	siteID, ok := urlParamID(w, r, "siteID"); if !ok { return }; _ = siteID
 	health, err := h.store.GetMonitorHealth(siteID)
 	if err != nil {
 		writeJSON(w, nil)
@@ -170,7 +171,7 @@ func (h *monitorHandlers) health(w http.ResponseWriter, r *http.Request) {
 // --- Domain ---
 
 func (h *monitorHandlers) domain(w http.ResponseWriter, r *http.Request) {
-	siteID, _ := strconv.Atoi(chi.URLParam(r, "siteID"))
+	siteID, ok := urlParamID(w, r, "siteID"); if !ok { return }; _ = siteID
 	domain, err := h.store.GetMonitorDomain(siteID)
 	if err != nil {
 		writeJSON(w, nil)
@@ -199,7 +200,7 @@ func (h *monitorHandlers) createSchedule(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	b.Command = strings.TrimSpace(b.Command)
+	b.Command = maxLen(strings.TrimSpace(b.Command), 255)
 	if b.Command == "" {
 		http.Error(w, "command is required", http.StatusBadRequest)
 		return
@@ -217,7 +218,7 @@ func (h *monitorHandlers) createSchedule(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *monitorHandlers) updateSchedule(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	var b storage.ScheduleHeartbeat
 	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -243,7 +244,7 @@ func (h *monitorHandlers) knownScheduleCommands(w http.ResponseWriter, r *http.R
 }
 
 func (h *monitorHandlers) deleteSchedule(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, ok := urlParamID(w, r, "id"); if !ok { return }; _ = id
 	if err := h.store.DeleteScheduleHeartbeat(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

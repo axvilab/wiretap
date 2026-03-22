@@ -153,6 +153,7 @@ func (h *handlers) updateSettings(w http.ResponseWriter, r *http.Request) {
 		if !allowed[k] {
 			continue
 		}
+		v = maxLen(v, 1024)
 		if err := h.store.SetSetting(k, v); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -203,4 +204,23 @@ func intParam(r *http.Request, key string, fallback int) int {
 		return fallback
 	}
 	return v
+}
+
+// urlParamID extracts a route param as int, returns -1 and writes 400 if invalid.
+func urlParamID(w http.ResponseWriter, r *http.Request, param string) (int, bool) {
+	s := chi.URLParam(r, param)
+	id, err := strconv.Atoi(s)
+	if err != nil || id < 1 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
+}
+
+// maxLen truncates a string to max length.
+func maxLen(s string, max int) string {
+	if len(s) > max {
+		return s[:max]
+	}
+	return s
 }

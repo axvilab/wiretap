@@ -17,8 +17,10 @@ wiretap/
 │   │   ├── correlator/ # Trace tree builder, job linker
 │   │   ├── analyzer/   # N+1, duplicate, slow query detection
 │   │   ├── storage/    # DuckDB operations + settings + sessions
-│   │   ├── api/        # REST API + WebSocket + auth
-│   │   └── config/     # Env-based configuration
+│   │   ├── api/        # REST API + WebSocket + auth + rate limiting
+│   │   ├── config/     # Env-based configuration
+│   │   ├── notifier/   # Notification channels (Telegram, Slack, Teams)
+│   │   └── monitor/    # Site monitoring (uptime, SSL, health, domain, schedule)
 │   ├── frontend/       # Vue 3 UI (embedded via go:embed in prod)
 │   ├── Dockerfile.dev  # Dev image with air hot-reload
 │   ├── Dockerfile      # Prod multi-stage build
@@ -56,6 +58,9 @@ wiretap/
 - **PHP 8.2+**, **Laravel 11/12/13**
 - Zero-config via auto-discovery
 - 18 listeners: queries, exceptions, jobs, cache, mail, notifications, http client, transactions, auth, commands, schedule, gate, var dumper, validation, broadcasts, logs, models, views
+- `wiretap()` helper — silent debug helper, sends values to Wiretap without output
+- Per-type configuration — each listener has its own config section with enabled, ignore, data filtering
+- `filterData()` — flexible data filtering: 'all', 'none', 'keys', or specific fields per type
 - HTTP + Redis drivers with gzip compression
 - Orchestra Testbench for testing
 
@@ -83,7 +88,20 @@ WIRETAP_URL=http://wiretap:9090/ingest
 WIRETAP_INGEST_KEY=key
 WIRETAP_REPLAY_ENABLED=true
 WIRETAP_REPLAY_SECRET=wt_xxx
+WIRETAP_MAX_PAYLOAD_BYTES=52428800 # 50MB default, max payload before drop
 ```
+
+### PHP Config Structure (per-type)
+Each listener type has its own section in `config/wiretap.php`:
+```php
+'views' => [
+    'enabled' => true,
+    'ignore' => [],
+    'data' => 'none',           // 'all', 'none', 'keys', ['var1', 'var2']
+    'overrides' => [],          // per-view: ['dashboard' => 'all']
+],
+```
+Data filter options: `'all'` (capture everything), `'none'` (skip data), `'keys'` (only field names), `['field1']` (specific fields). Global `mask_fields` applied everywhere.
 
 ## Development Environment
 
@@ -128,7 +146,7 @@ make app-sh              # Shell into Laravel container
 make release             # Build frontend + Docker image
 ```
 
-## UI Pages (13 pages)
+## UI Pages (14 pages)
 
 - **Dashboard** — stats cards, charts (7 time periods: 1m, 5m, 15m, 30m, 1h, 24h, 7d)
 - **Activity** — root traces only (request, command, schedule) with WebSocket banner
@@ -142,27 +160,36 @@ make release             # Build frontend + Docker image
 - **Broadcasts** — broadcast events with channels
 - **Notifications** — notification events with data
 - **Logs** — log entries with level filter + detail page
+- **Monitoring** — Sites (uptime/SSL/health/domain), Notifications (channels/rules), Schedules (heartbeats)
 - **Settings** — General (thresholds, retention), Storage (DB stats, clear), Info (env examples)
 
 ## Key Features
 
 - **18 PHP listeners** — all Laravel events covered
+- **`wiretap()` helper** — silent debug, sends value + label to Wiretap without output, returns value for inline use
 - **Replay/Retry** — replay requests, retry/dispatch jobs, replay broadcasts, replay commands
 - **Gzip compression** — PHP drivers compress, Go receiver decompresses
 - **HTTP + Redis drivers** — Redis bypasses Laravel prefix automatically
 - **Auth** — env-based password, session cookies in DuckDB
 - **Ingest API key** — protects ingest endpoint
-- **Ignore filters** — wildcard patterns for requests, jobs, commands, broadcasts, models, views
-- **Field masking** — sensitive fields masked in request body, job payload
-- **Job payload capture** — serialized payload for replay with editable properties
+- **Per-type config** — each of 18 listeners has own section: enabled, ignore patterns, data filtering
+- **Data filtering** — `filterData()` supports 'all', 'none', 'keys', specific fields; per-view overrides with wildcards
+- **Ignore filters** — wildcard patterns (fnmatch) for 15 event types: requests, queries, exceptions, jobs, mail, cache, notifications, http_client, gate, commands, schedule, logs, models, views, broadcasts
+- **Field masking** — global mask_fields, recursive, case-insensitive
+- **View data capture** — configurable: capture all variables, keys only, specific vars, or nothing; per-view overrides
+- **Job payload capture** — serialized payload for replay with editable properties, filterable
 - **HTTP response body** — captured for outgoing HTTP calls (skip binary, 512KB limit)
-- **Notification data** — public properties extracted via reflection
+- **Notification data** — public properties extracted via reflection, filterable
 - **Model events** — created/updated/deleted with model class and ID
-- **Views rendered** — blade view names in trace tree
+- **Views rendered** — blade view names + optional variable data in trace tree
 - **Configurable thresholds** — slow query/request ms via Settings UI
 - **Storage management** — DB size, trace/email/job counts, manual clear
 - **NewItemsBanner** — non-intrusive WebSocket updates on all table pages
-- **TraceTree** — all 18 event types formatted with enums, collapsible details, Open buttons
+- **TraceTree** — all event types + wiretap helper formatted with icons, collapsible details, Open buttons
+- **Monitoring** — uptime checks, SSL certificate expiry, domain WHOIS expiry, health endpoint polling, schedule heartbeats
+- **Notifications** — Telegram, Slack, Microsoft Teams via webhooks; alert rules with cooldown/dedup
+- **Alert triggers** — exception, site_down, ssl_expiry, domain_expiry, schedule_missed
+- **Security** — CORS origin-specific, rate limiting (30 write/min), body size limits (1MB API, 50MB ingest), input length validation, ID validation
 
 ## Architecture Decisions
 
@@ -172,6 +199,9 @@ make release             # Build frontend + Docker image
 - **go:embed** — Vue dist baked into Go binary, single file deployment
 - **WebSocket** — real-time dashboard updates, NewItemsBanner for tables
 - **Env-based config** — password, keys, URLs from environment (like Postgres/MySQL)
+- **Per-type PHP config** — each listener type has own section (enabled, ignore, data filter) instead of flat collect/ignore
+- **Monitoring goroutines** — uptime/SSL/health/domain/schedule run as background Go goroutines
+- **Notification dispatch** — Channel interface with Telegram/Slack/Teams implementations, Manager with cooldown/dedup
 - **Docker-first dev** — all development inside containers, host stays clean
 - **Redis driver** — bypasses Laravel prefix via PhpRedis/Predis raw client
 
@@ -188,7 +218,7 @@ make release             # Build frontend + Docker image
 ## Testing
 
 - **Go**: 46+ tests (storage, analyzer, API handlers, auth, sessions, ingest key, replay, dashboard)
-- **PHP**: 83+ tests (all 18 listeners, replay controller, validation, commands, ignore filters, masking)
+- **PHP**: 119+ tests (all 18 listeners, wiretap() helper, filterData, per-type config, ignore patterns, replay, validation, masking)
 - **Vitest**: 45+ tests (API layer, NewItemsBanner, ReplayModal, Login)
 - **Laravel compatibility**: tested on Laravel 11, 12, 13
 

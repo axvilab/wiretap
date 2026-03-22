@@ -7,6 +7,9 @@ return [
 
     'ingest_key' => env('WIRETAP_INGEST_KEY', ''),
 
+    // Max payload size in bytes before gzip (default 50MB). Oversized payloads are dropped.
+    'max_payload_bytes' => env('WIRETAP_MAX_PAYLOAD_BYTES', 50 * 1024 * 1024),
+
     'drivers' => [
         'http' => [
             'endpoint' => env('WIRETAP_URL', 'http://localhost:9090/ingest'),

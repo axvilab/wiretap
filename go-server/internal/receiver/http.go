@@ -31,6 +31,12 @@ func (r *HTTPReceiver) Handler() http.HandlerFunc {
 			return
 		}
 
+		if len(body) >= maxIngestBody {
+			log.Printf("[ingest] payload too large (%d bytes), rejected", len(body))
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+
 		var payload storage.TracePayload
 		if err := json.Unmarshal(body, &payload); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
@@ -52,6 +58,8 @@ func (r *HTTPReceiver) Handler() http.HandlerFunc {
 	}
 }
 
+const maxIngestBody = 50 * 1024 * 1024 // 50MB
+
 // readBody handles both plain and gzip-compressed request bodies
 func readBody(req *http.Request) ([]byte, error) {
 	if req.Header.Get("Content-Encoding") == "gzip" {
@@ -60,9 +68,9 @@ func readBody(req *http.Request) ([]byte, error) {
 			return nil, err
 		}
 		defer gr.Close()
-		return io.ReadAll(gr)
+		return io.ReadAll(io.LimitReader(gr, maxIngestBody))
 	}
-	return io.ReadAll(req.Body)
+	return io.ReadAll(io.LimitReader(req.Body, maxIngestBody))
 }
 
 func metaURI(p *storage.TracePayload) string {
