@@ -107,7 +107,10 @@ const replayLabel = computed(() => {
           :key="i"
           class="bg-amber-500/10 border border-amber-500/20 rounded px-3 py-2 text-sm"
         >
-          <span class="text-amber-400 font-semibold">{{ w.type }}</span>
+          <span v-if="w.type === 'n_plus_one'" class="text-amber-400" title="N+1 Query">🔄</span>
+          <span v-else-if="w.type === 'slow_query'" class="text-orange-400" title="Slow Query">🐢</span>
+          <span v-else-if="w.type === 'duplicate_query'" class="text-purple-400" title="Duplicate Query">⊘</span>
+          <span v-else class="text-amber-400 font-semibold">{{ w.type }}</span>
           <span class="text-zinc-300 ml-2">{{ w.message }}</span>
           <span v-if="w.suggestion" class="text-zinc-500 ml-2">— {{ w.suggestion }}</span>
         </div>

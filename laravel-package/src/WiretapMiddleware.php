@@ -14,6 +14,10 @@ class WiretapMiddleware
             return $next($request);
         }
 
+        if (! config('wiretap.requests.enabled', true)) {
+            return $next($request);
+        }
+
         if (Wiretap::shouldIgnore('requests', $request->path())) {
             return $next($request);
         }
@@ -26,7 +30,8 @@ class WiretapMiddleware
             'ip' => $request->ip(),
         ];
 
-        if (config('wiretap.collect.request_body', true)) {
+        $bodyFilter = config('wiretap.requests.body', 'all');
+        if ($bodyFilter !== 'none') {
             $data['headers'] = collect($request->headers->all())
                 ->map(fn ($v) => $v[0] ?? '')
                 ->except(['cookie', 'authorization'])
@@ -34,7 +39,10 @@ class WiretapMiddleware
 
             $input = $request->all();
             if (! empty($input)) {
-                $data['body'] = Wiretap::maskSensitive($input);
+                $filtered = Wiretap::filterData('requests', Wiretap::maskSensitive($input), 'body');
+                if ($filtered !== null) {
+                    $data['body'] = $filtered;
+                }
             }
         }
 

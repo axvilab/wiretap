@@ -95,10 +95,11 @@ class Wiretap
         ];
 
         // Store request body in meta for replay
-        if (config('wiretap.collect.request_body', true)) {
-            $input = $request->all();
-            if (! empty($input)) {
-                $meta['request_body'] = json_encode(static::maskSensitive($input));
+        $input = $request->all();
+        if (! empty($input)) {
+            $filtered = static::filterData('requests', static::maskSensitive($input), 'body');
+            if ($filtered !== null) {
+                $meta['request_body'] = json_encode($filtered);
             }
         }
 
@@ -176,7 +177,7 @@ class Wiretap
 
     public static function shouldIgnore(string $group, string $value): bool
     {
-        $patterns = config("wiretap.ignore.{$group}", []);
+        $patterns = config("wiretap.{$group}.ignore", []);
         foreach ($patterns as $pattern) {
             if ($pattern === $value) {
                 return true;
@@ -187,6 +188,46 @@ class Wiretap
             }
         }
         return false;
+    }
+
+    /**
+     * Filter data based on per-type config.
+     *
+     * @param  string      $type       Config section ('views', 'requests', 'jobs', etc.)
+     * @param  array       $data       The raw data to filter
+     * @param  string      $subKey     Config key within the section ('data', 'body', 'payload', 'context')
+     * @param  string|null $identifier Optional identifier for per-item overrides (e.g. view name)
+     * @return array|null  Filtered data, array of keys, or null ('none')
+     */
+    public static function filterData(string $type, array $data, string $subKey, ?string $identifier = null): ?array
+    {
+        $filter = config("wiretap.{$type}.{$subKey}", 'all');
+
+        // Check per-item overrides (e.g. views.overrides)
+        if ($identifier !== null) {
+            $overrides = config("wiretap.{$type}.overrides", []);
+            foreach ($overrides as $pattern => $override) {
+                if ($pattern === $identifier || (str_contains($pattern, '*') && fnmatch($pattern, $identifier))) {
+                    $filter = $override;
+                    break;
+                }
+            }
+        }
+
+        if ($filter === 'none') {
+            return null;
+        }
+
+        if ($filter === 'keys') {
+            return array_keys($data);
+        }
+
+        if (is_array($filter)) {
+            return array_intersect_key($data, array_flip($filter));
+        }
+
+        // 'all' or any other value
+        return $data;
     }
 
     public static function extractJobProperties(object $job): array

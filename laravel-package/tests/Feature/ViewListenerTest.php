@@ -63,13 +63,13 @@ class ViewListenerTest extends TestCase
 
     public function test_view_event_not_captured_when_disabled(): void
     {
-        config()->set('wiretap.collect.views', false);
-        $this->assertFalse(config('wiretap.collect.views'));
+        config()->set('wiretap.views.enabled', false);
+        $this->assertFalse(config('wiretap.views.enabled'));
     }
 
     public function test_ignored_view_not_captured(): void
     {
-        config()->set('wiretap.ignore.views', ['errors::*', 'vendor/*']);
+        config()->set('wiretap.views.ignore', ['errors::*', 'vendor/*']);
 
         $this->assertTrue(Wiretap::shouldIgnore('views', 'errors::404'));
         $this->assertTrue(Wiretap::shouldIgnore('views', 'vendor/pagination'));

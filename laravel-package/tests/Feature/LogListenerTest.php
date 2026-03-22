@@ -109,7 +109,7 @@ class LogListenerTest extends TestCase
 
     public function test_log_not_captured_when_collection_disabled(): void
     {
-        config()->set('wiretap.collect.logs', false);
+        config()->set('wiretap.logs.enabled', false);
 
         // Re-register listeners with new config
         $provider = new \Axvi\Wiretap\WiretapServiceProvider(app());
@@ -119,6 +119,6 @@ class LogListenerTest extends TestCase
 
         // The original listener is still registered from initial boot,
         // so we verify the config flag is respected
-        $this->assertFalse(config('wiretap.collect.logs'));
+        $this->assertFalse(config('wiretap.logs.enabled'));
     }
 }

@@ -93,12 +93,15 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerQueryListener(): void
     {
-        if (! config('wiretap.collect.queries', true)) {
+        if (! config('wiretap.queries.enabled', true)) {
             return;
         }
 
         DB::listen(function (QueryExecuted $query) {
             if (Wiretap::$rid === '') {
+                return;
+            }
+            if (Wiretap::shouldIgnore('queries', $query->sql)) {
                 return;
             }
             Wiretap::send('query', [
@@ -112,13 +115,16 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerExceptionHandler(): void
     {
-        if (! config('wiretap.collect.exceptions', true)) {
+        if (! config('wiretap.exceptions.enabled', true)) {
             return;
         }
 
         $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
             ->reportable(function (\Throwable $e) {
                 if (Wiretap::$rid === '') {
+                    return;
+                }
+                if (Wiretap::shouldIgnore('exceptions', get_class($e))) {
                     return;
                 }
                 Wiretap::send('exception', [
@@ -133,7 +139,7 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerJobListeners(): void
     {
-        if (! config('wiretap.collect.jobs', true)) {
+        if (! config('wiretap.jobs.enabled', true)) {
             return;
         }
 
@@ -151,22 +157,23 @@ class WiretapServiceProvider extends ServiceProvider
             ];
 
             // Capture job payload for replay
-            if (config('wiretap.collect.job_payload', true)) {
-                try {
-                    $queuePayload = $event->job->payload();
-                    $serialized = $queuePayload['data']['command'] ?? '';
-                    if ($serialized !== '') {
-                        $jobObject = unserialize($serialized);
-                        $properties = Wiretap::extractJobProperties($jobObject);
-                        $properties = Wiretap::maskSensitive($properties);
+            try {
+                $queuePayload = $event->job->payload();
+                $serialized = $queuePayload['data']['command'] ?? '';
+                if ($serialized !== '') {
+                    $jobObject = unserialize($serialized);
+                    $properties = Wiretap::extractJobProperties($jobObject);
+                    $properties = Wiretap::maskSensitive($properties);
 
-                        $jobData['job_payload'] = $properties;
-                        $jobData['job_serialized'] = base64_encode($serialized);
-                        $jobData['payload_size'] = strlen($serialized);
+                    $filtered = Wiretap::filterData('jobs', $properties, 'payload');
+                    if ($filtered !== null) {
+                        $jobData['job_payload'] = $filtered;
                     }
-                } catch (\Throwable) {
-                    // Can't extract payload — skip silently
+                    $jobData['job_serialized'] = base64_encode($serialized);
+                    $jobData['payload_size'] = strlen($serialized);
                 }
+            } catch (\Throwable) {
+                // Can't extract payload — skip silently
             }
 
             Wiretap::send('job.start', $jobData);
@@ -224,34 +231,38 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerCacheListeners(): void
     {
-        if (! config('wiretap.collect.cache', true)) {
+        if (! config('wiretap.cache.enabled', true)) {
             return;
         }
 
         Event::listen(CacheHit::class, function (CacheHit $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('cache', $event->key)) return;
             Wiretap::send('cache', ['key' => $event->key, 'hit' => true]);
         });
 
         Event::listen(CacheMissed::class, function (CacheMissed $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('cache', $event->key)) return;
             Wiretap::send('cache', ['key' => $event->key, 'hit' => false]);
         });
 
         Event::listen(KeyWritten::class, function (KeyWritten $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('cache', $event->key)) return;
             Wiretap::send('cache.write', ['key' => $event->key, 'ttl' => $event->seconds]);
         });
 
         Event::listen(KeyForgotten::class, function (KeyForgotten $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('cache', $event->key)) return;
             Wiretap::send('cache.forget', ['key' => $event->key]);
         });
     }
 
     protected function registerMailListeners(): void
     {
-        if (! config('wiretap.collect.mail', true)) {
+        if (! config('wiretap.mail.enabled', true)) {
             return;
         }
 
@@ -267,6 +278,9 @@ class WiretapServiceProvider extends ServiceProvider
         Event::listen(MessageSent::class, function (MessageSent $event) {
             if (Wiretap::$rid === '') return;
             $msg = $event->message;
+
+            $mailable = $event->data['__laravel_notification'] ?? null;
+            if ($mailable !== null && Wiretap::shouldIgnore('mail', get_class($mailable))) return;
 
             // Extract full email content for Wiretap mail viewer
             $html = '';
@@ -318,8 +332,13 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerNotificationListeners(): void
     {
+        if (! config('wiretap.notifications.enabled', true)) {
+            return;
+        }
+
         Event::listen(NotificationSending::class, function (NotificationSending $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('notifications', get_class($event->notification))) return;
             Wiretap::send('notification.sending', [
                 'channel' => $event->channel,
                 'class' => get_class($event->notification),
@@ -329,6 +348,7 @@ class WiretapServiceProvider extends ServiceProvider
 
         Event::listen(NotificationSent::class, function (NotificationSent $event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('notifications', get_class($event->notification))) return;
 
             $data = [
                 'channel' => $event->channel,
@@ -340,8 +360,9 @@ class WiretapServiceProvider extends ServiceProvider
             try {
                 $properties = Wiretap::extractJobProperties($event->notification);
                 $properties = Wiretap::maskSensitive($properties);
-                if (! empty($properties)) {
-                    $data['data'] = $properties;
+                $filtered = Wiretap::filterData('notifications', $properties, 'data');
+                if ($filtered !== null && ! empty($filtered)) {
+                    $data['data'] = $filtered;
                 }
             } catch (\Throwable) {}
 
@@ -351,15 +372,24 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerHttpClientListeners(): void
     {
+        if (! config('wiretap.http_client.enabled', true)) {
+            return;
+        }
+
         $maxResponseSize = 512 * 1024; // 512KB
         $binaryTypes = ['image/', 'video/', 'audio/', 'application/pdf', 'application/zip', 'application/gzip', 'application/octet-stream'];
 
         try {
             Http::globalRequestMiddleware(function ($request) {
                 if (Wiretap::$rid !== '') {
+                    $url = (string) $request->getUri();
+                    if (Wiretap::shouldIgnore('http_client', $url)) {
+                        return $request;
+                    }
+
                     $data = [
                         'method' => $request->getMethod(),
-                        'url' => (string) $request->getUri(),
+                        'url' => $url,
                     ];
 
                     // Capture request headers
@@ -395,28 +425,31 @@ class WiretapServiceProvider extends ServiceProvider
                     $data['response_headers'] = $responseHeaders;
 
                     // Capture response body — skip binary content
-                    $contentType = $responseHeaders['Content-Type'] ?? $responseHeaders['content-type'] ?? '';
-                    $isBinary = false;
-                    foreach ($binaryTypes as $type) {
-                        if (str_contains(strtolower($contentType), $type)) {
-                            $isBinary = true;
-                            break;
+                    $responseBodyFilter = config('wiretap.http_client.response_body', 'all');
+                    if ($responseBodyFilter !== 'none') {
+                        $contentType = $responseHeaders['Content-Type'] ?? $responseHeaders['content-type'] ?? '';
+                        $isBinary = false;
+                        foreach ($binaryTypes as $type) {
+                            if (str_contains(strtolower($contentType), $type)) {
+                                $isBinary = true;
+                                break;
+                            }
                         }
-                    }
 
-                    if (! $isBinary) {
-                        $body = (string) $response->getBody();
-                        $size = strlen($body);
-                        if ($size <= $maxResponseSize) {
-                            $data['response_body'] = $body;
+                        if (! $isBinary) {
+                            $body = (string) $response->getBody();
+                            $size = strlen($body);
+                            if ($size <= $maxResponseSize) {
+                                $data['response_body'] = $body;
+                            } else {
+                                $data['response_body'] = mb_substr($body, 0, $maxResponseSize);
+                                $data['response_truncated'] = true;
+                            }
+                            $data['response_size'] = $size;
                         } else {
-                            $data['response_body'] = mb_substr($body, 0, $maxResponseSize);
-                            $data['response_truncated'] = true;
+                            $data['response_body_skipped'] = 'binary content: ' . $contentType;
+                            $data['response_size'] = (int) ($responseHeaders['Content-Length'] ?? 0);
                         }
-                        $data['response_size'] = $size;
-                    } else {
-                        $data['response_body_skipped'] = 'binary content: ' . $contentType;
-                        $data['response_size'] = (int) ($responseHeaders['Content-Length'] ?? 0);
                     }
 
                     Wiretap::send('http.out.end', $data);
@@ -430,6 +463,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerTransactionListeners(): void
     {
+        if (! config('wiretap.transactions.enabled', true)) {
+            return;
+        }
+
         Event::listen(TransactionBeginning::class, function (TransactionBeginning $event) {
             if (Wiretap::$rid === '') return;
             Wiretap::send('transaction', ['action' => 'begin', 'connection' => $event->connectionName]);
@@ -448,6 +485,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerAuthListeners(): void
     {
+        if (! config('wiretap.auth.enabled', true)) {
+            return;
+        }
+
         Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
             if (Wiretap::$rid === '') return;
             Wiretap::send('auth.login', [
@@ -475,6 +516,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerArtisanListeners(): void
     {
+        if (! config('wiretap.commands.enabled', true)) {
+            return;
+        }
+
         Event::listen(\Illuminate\Console\Events\CommandStarting::class, function ($event) {
             if (Wiretap::shouldIgnore('commands', $event->command ?? '')) {
                 return;
@@ -498,11 +543,17 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerScheduleListeners(): void
     {
+        if (! config('wiretap.schedule.enabled', true)) {
+            return;
+        }
+
         Event::listen(\Illuminate\Console\Events\ScheduledTaskStarting::class, function ($event) {
+            $command = $event->task->command ?? $event->task->description;
+            if (Wiretap::shouldIgnore('schedule', $command)) return;
             Wiretap::start();
             Wiretap::send('schedule.start', [
                 'expression' => $event->task->expression,
-                'command' => $event->task->command ?? $event->task->description,
+                'command' => $command,
             ]);
         });
 
@@ -529,12 +580,17 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerGateListener(): void
     {
+        if (! config('wiretap.gate.enabled', true)) {
+            return;
+        }
+
         if (! class_exists(\Illuminate\Auth\Events\GateEvaluated::class)) {
             return;
         }
 
         Event::listen(\Illuminate\Auth\Events\GateEvaluated::class, function ($event) {
             if (Wiretap::$rid === '') return;
+            if (Wiretap::shouldIgnore('gate', $event->ability)) return;
             Wiretap::send('gate', [
                 'ability' => $event->ability,
                 'result' => $event->result,
@@ -545,6 +601,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerVarDumper(): void
     {
+        if (! config('wiretap.dumps.enabled', true)) {
+            return;
+        }
+
         if (! class_exists(\Symfony\Component\VarDumper\VarDumper::class)) {
             return;
         }
@@ -568,6 +628,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerValidationListener(): void
     {
+        if (! config('wiretap.validation.enabled', true)) {
+            return;
+        }
+
         // Hook into exception rendering to catch ValidationException
         $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
             ->renderable(function (\Illuminate\Validation\ValidationException $e) {
@@ -583,6 +647,10 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerBroadcastListener(): void
     {
+        if (! config('wiretap.broadcasts.enabled', true)) {
+            return;
+        }
+
         Event::listen('*', function (string $eventName, array $data) {
             if (Wiretap::$rid === '') return;
 
@@ -618,7 +686,7 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerLogListener(): void
     {
-        if (! config('wiretap.collect.logs', true)) {
+        if (! config('wiretap.logs.enabled', true)) {
             return;
         }
 
@@ -628,17 +696,25 @@ class WiretapServiceProvider extends ServiceProvider
             // Don't capture our own warnings
             if (str_starts_with($event->message, '[Wiretap]')) return;
 
+            if (Wiretap::shouldIgnore('logs', $event->level)) return;
+
+            $context = !empty($event->context) ? $event->context : [];
+            if (! empty($context)) {
+                $filtered = Wiretap::filterData('logs', $context, 'context');
+                $context = $filtered ?? [];
+            }
+
             Wiretap::send('log', [
                 'level' => $event->level,
                 'message' => $event->message,
-                'context' => !empty($event->context) ? array_slice($event->context, 0, 5) : [],
+                'context' => $context,
             ]);
         });
     }
 
     protected function registerModelListener(): void
     {
-        if (! config('wiretap.collect.models', true)) {
+        if (! config('wiretap.models.enabled', true)) {
             return;
         }
 
@@ -668,7 +744,7 @@ class WiretapServiceProvider extends ServiceProvider
 
     protected function registerViewListener(): void
     {
-        if (! config('wiretap.collect.views', true)) {
+        if (! config('wiretap.views.enabled', true)) {
             return;
         }
 
@@ -679,10 +755,34 @@ class WiretapServiceProvider extends ServiceProvider
 
             if (Wiretap::shouldIgnore('views', $name)) return;
 
-            Wiretap::send('view', [
+            $eventData = [
                 'name' => $name,
                 'path' => $view->getPath(),
-            ]);
+            ];
+
+            // Capture view data based on config
+            $rawData = $view->getData();
+            // Remove framework internals
+            unset($rawData['__env'], $rawData['app'], $rawData['errors']);
+            if (! empty($rawData)) {
+                $viewData = Wiretap::filterData('views', $rawData, 'data', $name);
+                if ($viewData !== null) {
+                    // Convert non-scalar values to strings for safe transport
+                    $safe = [];
+                    foreach ($viewData as $key => $value) {
+                        if (is_scalar($value) || is_null($value)) {
+                            $safe[$key] = $value;
+                        } elseif (is_array($value)) {
+                            $safe[$key] = $value;
+                        } else {
+                            $safe[$key] = print_r($value, true);
+                        }
+                    }
+                    $eventData['data'] = $safe;
+                }
+            }
+
+            Wiretap::send('view', $eventData);
         });
     }
 

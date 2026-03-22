@@ -11,7 +11,7 @@ class WiretapTest extends TestCase
 
     public function test_should_ignore_exact_match(): void
     {
-        config()->set('wiretap.ignore.commands', ['tinker', 'list']);
+        config()->set('wiretap.commands.ignore', ['tinker', 'list']);
 
         $this->assertTrue(Wiretap::shouldIgnore('commands', 'tinker'));
         $this->assertTrue(Wiretap::shouldIgnore('commands', 'list'));
@@ -20,7 +20,7 @@ class WiretapTest extends TestCase
 
     public function test_should_ignore_wildcard(): void
     {
-        config()->set('wiretap.ignore.commands', ['horizon:*', 'config:*']);
+        config()->set('wiretap.commands.ignore', ['horizon:*', 'config:*']);
 
         $this->assertTrue(Wiretap::shouldIgnore('commands', 'horizon:work'));
         $this->assertTrue(Wiretap::shouldIgnore('commands', 'horizon:pause'));
@@ -30,7 +30,7 @@ class WiretapTest extends TestCase
 
     public function test_should_ignore_request_paths(): void
     {
-        config()->set('wiretap.ignore.requests', ['_wiretap/*', 'health']);
+        config()->set('wiretap.requests.ignore', ['_wiretap/*', 'health']);
 
         $this->assertTrue(Wiretap::shouldIgnore('requests', '_wiretap/replay-request'));
         $this->assertTrue(Wiretap::shouldIgnore('requests', '_wiretap/retry-job'));
@@ -40,7 +40,7 @@ class WiretapTest extends TestCase
 
     public function test_should_ignore_empty_patterns(): void
     {
-        config()->set('wiretap.ignore.jobs', []);
+        config()->set('wiretap.jobs.ignore', []);
 
         $this->assertFalse(Wiretap::shouldIgnore('jobs', 'App\\Jobs\\ProcessOrder'));
     }
@@ -98,6 +98,70 @@ class WiretapTest extends TestCase
         // mask_fields comparison is lowercase
         $this->assertEquals('***', $result['Password']);
         $this->assertEquals('***', $result['PASSWORD']);
+    }
+
+    // --- filterData ---
+
+    public function test_filter_data_all(): void
+    {
+        config()->set('wiretap.views.data', 'all');
+        $data = ['user' => 'John', 'items' => [1, 2]];
+        $this->assertEquals($data, Wiretap::filterData('views', $data, 'data'));
+    }
+
+    public function test_filter_data_none(): void
+    {
+        config()->set('wiretap.views.data', 'none');
+        $this->assertNull(Wiretap::filterData('views', ['user' => 'John'], 'data'));
+    }
+
+    public function test_filter_data_keys(): void
+    {
+        config()->set('wiretap.views.data', 'keys');
+        $data = ['user' => 'John', 'items' => [1, 2], 'locale' => 'en'];
+        $this->assertEquals(['user', 'items', 'locale'], Wiretap::filterData('views', $data, 'data'));
+    }
+
+    public function test_filter_data_specific_fields(): void
+    {
+        config()->set('wiretap.views.data', ['user', 'locale']);
+        $data = ['user' => 'John', 'items' => [1, 2], 'locale' => 'en'];
+        $result = Wiretap::filterData('views', $data, 'data');
+        $this->assertEquals(['user' => 'John', 'locale' => 'en'], $result);
+        $this->assertArrayNotHasKey('items', $result);
+    }
+
+    public function test_filter_data_with_override(): void
+    {
+        config()->set('wiretap.views.data', 'none');
+        config()->set('wiretap.views.overrides', ['dashboard' => 'all']);
+        $data = ['user' => 'John'];
+        $this->assertEquals($data, Wiretap::filterData('views', $data, 'data', 'dashboard'));
+    }
+
+    public function test_filter_data_with_wildcard_override(): void
+    {
+        config()->set('wiretap.views.data', 'none');
+        config()->set('wiretap.views.overrides', ['emails.*' => 'keys']);
+        $data = ['subject' => 'Hello', 'body' => 'World'];
+        $this->assertEquals(['subject', 'body'], Wiretap::filterData('views', $data, 'data', 'emails.welcome'));
+    }
+
+    public function test_filter_data_override_specific_fields(): void
+    {
+        config()->set('wiretap.views.data', 'none');
+        config()->set('wiretap.views.overrides', ['welcome' => ['user']]);
+        $data = ['user' => 'John', 'items' => [1, 2]];
+        $result = Wiretap::filterData('views', $data, 'data', 'welcome');
+        $this->assertEquals(['user' => 'John'], $result);
+    }
+
+    public function test_filter_data_defaults_to_all(): void
+    {
+        // No config set — should default to 'all'
+        config()->set('wiretap.jobs', ['enabled' => true]);
+        $data = ['orderId' => 42];
+        $this->assertEquals($data, Wiretap::filterData('jobs', $data, 'payload'));
     }
 
     // --- extractJobProperties ---

@@ -46,6 +46,7 @@ export const EventType = {
   NOTIFICATION_SENDING: 'notification.sending',
   NOTIFICATION_SENT: 'notification.sent',
   DUMP: 'dump',
+  WIRETAP: 'wiretap',
   VALIDATION: 'validation',
 } as const
 
@@ -78,4 +79,5 @@ export const EVENT_TYPE_COLORS: Record<string, string> = {
   [EventType.GATE]: 'text-yellow-400',
   [EventType.HTTP_OUT_START]: 'text-sky-400',
   [EventType.HTTP_OUT_END]: 'text-sky-400',
+  [EventType.WIRETAP]: 'text-teal-400',
 }

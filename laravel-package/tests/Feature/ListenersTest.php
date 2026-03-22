@@ -197,6 +197,47 @@ class ListenersTest extends TestCase
         $this->assertArrayHasKey('line', $event['data']);
     }
 
+    public function test_wiretap_helper_sends_value_silently(): void
+    {
+        Wiretap::start();
+
+        $result = wiretap(['name' => 'John'], 'user data');
+
+        $this->assertEquals(['name' => 'John'], $result, 'wiretap() should return the original value');
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'wiretap');
+        $this->assertNotEmpty($events);
+
+        $event = array_values($events)[0];
+        $this->assertStringContainsString('John', $event['data']['value']);
+        $this->assertEquals('user data', $event['data']['label']);
+        $this->assertArrayHasKey('file', $event['data']);
+        $this->assertArrayHasKey('line', $event['data']);
+    }
+
+    public function test_wiretap_helper_works_without_label(): void
+    {
+        Wiretap::start();
+
+        wiretap('simple value');
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'wiretap');
+        $event = array_values($events)[0];
+        $this->assertStringContainsString('simple value', $event['data']['value']);
+        $this->assertNull($event['data']['label']);
+    }
+
+    public function test_wiretap_helper_silent_outside_request(): void
+    {
+        Wiretap::$rid = '';
+        Wiretap::$buffer = [];
+
+        wiretap('should not send');
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'wiretap');
+        $this->assertEmpty($events);
+    }
+
     // === HTTP Client Listener ===
 
     public function test_http_client_events_captured(): void
@@ -396,7 +437,7 @@ class ListenersTest extends TestCase
 
     public function test_job_not_captured_when_ignored(): void
     {
-        config()->set('wiretap.ignore.jobs', ['*TestQueueJob*']);
+        config()->set('wiretap.jobs.ignore', ['*TestQueueJob*']);
         $this->assertTrue(Wiretap::shouldIgnore('jobs', TestQueueJob::class));
     }
 
@@ -457,6 +498,226 @@ class ListenersTest extends TestCase
         // Should not have started a trace
         $this->assertEmpty(Wiretap::$rid);
         $this->assertEmpty(Wiretap::$buffer);
+    }
+
+    // === Ignore patterns for new types ===
+
+    public function test_query_ignored_by_pattern(): void
+    {
+        config()->set('wiretap.queries.ignore', ['select * from sessions*']);
+        $this->assertTrue(Wiretap::shouldIgnore('queries', 'select * from sessions where id = ?'));
+        $this->assertFalse(Wiretap::shouldIgnore('queries', 'select * from users'));
+    }
+
+    public function test_exception_ignored_by_class(): void
+    {
+        config()->set('wiretap.exceptions.ignore', ['*NotFoundException*']);
+        $this->assertTrue(Wiretap::shouldIgnore('exceptions', 'App\Exceptions\NotFoundException'));
+        $this->assertFalse(Wiretap::shouldIgnore('exceptions', 'App\Exceptions\PaymentException'));
+    }
+
+    public function test_cache_ignored_by_key(): void
+    {
+        config()->set('wiretap.cache.ignore', ['telescope:*', 'horizon:*']);
+        $this->assertTrue(Wiretap::shouldIgnore('cache', 'telescope:dump-123'));
+        $this->assertTrue(Wiretap::shouldIgnore('cache', 'horizon:stats'));
+        $this->assertFalse(Wiretap::shouldIgnore('cache', 'user:profile:42'));
+    }
+
+    public function test_notification_ignored_by_class(): void
+    {
+        config()->set('wiretap.notifications.ignore', ['*MarketingNotification*']);
+        $this->assertTrue(Wiretap::shouldIgnore('notifications', 'App\Notifications\MarketingNotification'));
+        $this->assertFalse(Wiretap::shouldIgnore('notifications', 'App\Notifications\OrderShipped'));
+    }
+
+    public function test_http_client_ignored_by_url(): void
+    {
+        config()->set('wiretap.http_client.ignore', ['*stripe.com*', '*analytics*']);
+        $this->assertTrue(Wiretap::shouldIgnore('http_client', 'https://api.stripe.com/v1/charges'));
+        $this->assertTrue(Wiretap::shouldIgnore('http_client', 'https://analytics.example.com/track'));
+        $this->assertFalse(Wiretap::shouldIgnore('http_client', 'https://api.example.com/orders'));
+    }
+
+    public function test_gate_ignored_by_ability(): void
+    {
+        config()->set('wiretap.gate.ignore', ['viewNova', 'viewHorizon']);
+        $this->assertTrue(Wiretap::shouldIgnore('gate', 'viewNova'));
+        $this->assertFalse(Wiretap::shouldIgnore('gate', 'update-post'));
+    }
+
+    public function test_schedule_ignored_by_command(): void
+    {
+        config()->set('wiretap.schedule.ignore', ['telescope:*']);
+        $this->assertTrue(Wiretap::shouldIgnore('schedule', 'telescope:prune'));
+        $this->assertFalse(Wiretap::shouldIgnore('schedule', 'orders:cleanup'));
+    }
+
+    public function test_log_ignored_by_level(): void
+    {
+        config()->set('wiretap.logs.ignore', ['debug']);
+        $this->assertTrue(Wiretap::shouldIgnore('logs', 'debug'));
+        $this->assertFalse(Wiretap::shouldIgnore('logs', 'error'));
+    }
+
+    public function test_mail_ignored_by_class(): void
+    {
+        config()->set('wiretap.mail.ignore', ['*MarketingMail*']);
+        $this->assertTrue(Wiretap::shouldIgnore('mail', 'App\Mail\MarketingMail'));
+        $this->assertFalse(Wiretap::shouldIgnore('mail', 'App\Mail\OrderConfirmation'));
+    }
+
+    // === Enabled flag for previously unguarded listeners ===
+
+    public function test_cache_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.cache.enabled', false);
+
+        $provider = new \Axvi\Wiretap\WiretapServiceProvider(app());
+        // Verify flag is respected
+        $this->assertFalse(config('wiretap.cache.enabled'));
+    }
+
+    public function test_notifications_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.notifications.enabled', false);
+        $this->assertFalse(config('wiretap.notifications.enabled'));
+    }
+
+    public function test_auth_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.auth.enabled', false);
+        $this->assertFalse(config('wiretap.auth.enabled'));
+    }
+
+    public function test_gate_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.gate.enabled', false);
+        $this->assertFalse(config('wiretap.gate.enabled'));
+    }
+
+    public function test_transactions_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.transactions.enabled', false);
+        $this->assertFalse(config('wiretap.transactions.enabled'));
+    }
+
+    public function test_http_client_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.http_client.enabled', false);
+        $this->assertFalse(config('wiretap.http_client.enabled'));
+    }
+
+    public function test_dumps_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.dumps.enabled', false);
+        $this->assertFalse(config('wiretap.dumps.enabled'));
+    }
+
+    public function test_validation_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.validation.enabled', false);
+        $this->assertFalse(config('wiretap.validation.enabled'));
+    }
+
+    public function test_broadcasts_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.broadcasts.enabled', false);
+        $this->assertFalse(config('wiretap.broadcasts.enabled'));
+    }
+
+    public function test_schedule_not_captured_when_disabled(): void
+    {
+        config()->set('wiretap.schedule.enabled', false);
+        $this->assertFalse(config('wiretap.schedule.enabled'));
+    }
+
+    // === filterData integration ===
+
+    public function test_log_context_filtered_by_config(): void
+    {
+        config()->set('wiretap.logs.context', 'keys');
+        Wiretap::start();
+
+        Log::error('Payment failed', ['order_id' => 123, 'reason' => 'declined']);
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'log');
+        $event = array_values($events)[0];
+
+        $this->assertEquals(['order_id', 'reason'], $event['data']['context']);
+    }
+
+    public function test_log_context_none_returns_empty(): void
+    {
+        config()->set('wiretap.logs.context', 'none');
+        Wiretap::start();
+
+        Log::error('Payment failed', ['order_id' => 123]);
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'log');
+        $event = array_values($events)[0];
+
+        $this->assertEmpty($event['data']['context']);
+    }
+
+    public function test_log_context_specific_fields(): void
+    {
+        config()->set('wiretap.logs.context', ['order_id']);
+        Wiretap::start();
+
+        Log::error('Payment failed', ['order_id' => 123, 'reason' => 'declined', 'amount' => 99]);
+
+        $events = array_filter(Wiretap::$buffer, fn ($e) => $e['type'] === 'log');
+        $event = array_values($events)[0];
+
+        $this->assertEquals(['order_id' => 123], $event['data']['context']);
+    }
+
+    public function test_view_data_captured_when_enabled(): void
+    {
+        config()->set('wiretap.views.data', 'all');
+        Wiretap::start();
+
+        // Simulate view data capture via filterData
+        $rawData = ['user' => 'John', 'items' => ['a', 'b']];
+        $filtered = Wiretap::filterData('views', $rawData, 'data', 'dashboard');
+
+        $this->assertEquals($rawData, $filtered);
+    }
+
+    public function test_view_data_keys_only(): void
+    {
+        config()->set('wiretap.views.data', 'keys');
+        Wiretap::start();
+
+        $rawData = ['user' => 'John', 'items' => ['a', 'b']];
+        $filtered = Wiretap::filterData('views', $rawData, 'data');
+
+        $this->assertEquals(['user', 'items'], $filtered);
+    }
+
+    public function test_view_data_per_view_override(): void
+    {
+        config()->set('wiretap.views.data', 'none');
+        config()->set('wiretap.views.overrides', [
+            'dashboard' => 'all',
+            'emails.*' => 'keys',
+            'admin.users' => ['role'],
+        ]);
+
+        $data = ['user' => 'John', 'role' => 'admin', 'items' => [1]];
+
+        // dashboard → all
+        $this->assertEquals($data, Wiretap::filterData('views', $data, 'data', 'dashboard'));
+
+        // emails.welcome → keys
+        $this->assertEquals(['user', 'role', 'items'], Wiretap::filterData('views', $data, 'data', 'emails.welcome'));
+
+        // admin.users → specific fields
+        $this->assertEquals(['role' => 'admin'], Wiretap::filterData('views', $data, 'data', 'admin.users'));
+
+        // other view → none (default)
+        $this->assertNull(Wiretap::filterData('views', $data, 'data', 'welcome'));
     }
 
     // === Combined: Multiple listeners in one request ===

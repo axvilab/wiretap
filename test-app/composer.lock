@@ -12,15 +12,20 @@
             "dist": {
                 "type": "path",
                 "url": "/var/www/packages/wiretap",
-                "reference": "22d8f35cea219b31441aae471982ba0957970fda"
+                "reference": "e40ea98fd96a1fc9fec3767a76d3ff6f57a23a7d"
             },
             "require": {
-                "illuminate/support": "^10.0|^11.0|^12.0",
-                "php": "^8.1"
+                "ext-zlib": "*",
+                "illuminate/support": "^11.0|^12.0|^13.0",
+                "php": "^8.2"
             },
             "require-dev": {
-                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "orchestra/testbench": "^9.0|^10.0|^11.0",
                 "phpunit/phpunit": "^10.0|^11.0"
+            },
+            "suggest": {
+                "ext-redis": "Required for Redis driver with PhpRedis",
+                "predis/predis": "Required for Redis driver with Predis"
             },
             "type": "library",
             "extra": {
@@ -33,7 +38,10 @@
             "autoload": {
                 "psr-4": {
                     "Axvi\\Wiretap\\": "src/"
-                }
+                },
+                "files": [
+                    "src/helpers.php"
+                ]
             },
             "autoload-dev": {
                 "psr-4": {

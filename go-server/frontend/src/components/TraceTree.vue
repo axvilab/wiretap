@@ -205,6 +205,16 @@ async function goToMail(traceRID: string) {
             <pre v-if="!expandedEvents.has(i)" class="mt-0.5 text-pink-300/70 line-clamp-1">{{ ev.data.value.substring(0, 80) }}</pre>
             <pre v-else class="mt-1 text-pink-300 bg-zinc-950 rounded p-2 whitespace-pre-wrap break-words max-h-[300px] overflow-auto">{{ ev.data.value }}</pre>
           </template>
+          <!-- Wiretap -->
+          <template v-else-if="ev.type === EventType.WIRETAP">
+            <div class="flex items-start gap-2">
+              <span v-if="ev.data.label" class="px-1.5 py-0.5 rounded border text-xs bg-teal-500/10 text-teal-400 border-teal-500/20 shrink-0">{{ ev.data.label }}</span>
+              <span class="text-zinc-500 shrink-0">{{ shortPath(ev.data.file) }}:{{ ev.data.line }}</span>
+              <button @click.stop="toggleEvent(i)" class="px-1.5 py-0.5 text-xs text-zinc-500 hover:text-zinc-300 shrink-0">{{ expandedEvents.has(i) ? '▾' : '▸' }}</button>
+            </div>
+            <pre v-if="!expandedEvents.has(i)" class="mt-0.5 text-teal-300/70 line-clamp-1">{{ ev.data.value.substring(0, 80) }}</pre>
+            <pre v-else class="mt-1 text-teal-300 bg-zinc-950 rounded p-2 whitespace-pre-wrap break-words max-h-[300px] overflow-auto">{{ ev.data.value }}</pre>
+          </template>
           <!-- Validation -->
           <template v-else-if="ev.type === EventType.VALIDATION">
             <div class="flex items-center gap-2">
@@ -285,8 +295,17 @@ async function goToMail(traceRID: string) {
           </template>
           <!-- View -->
           <template v-else-if="ev.type === EventType.VIEW">
-            <span class="text-lime-300">{{ ev.data.name }}</span>
-            <span v-if="ev.data.path" class="ml-2 text-zinc-600 truncate">{{ ev.data.path.length > 60 ? '...' + ev.data.path.slice(-50) : ev.data.path }}</span>
+            <div class="flex items-start gap-2">
+              <span class="text-lime-300">{{ ev.data.name }}</span>
+              <span v-if="ev.data.path" class="text-zinc-600 truncate">{{ ev.data.path.length > 60 ? '...' + ev.data.path.slice(-50) : ev.data.path }}</span>
+              <button v-if="ev.data.data" @click.stop="toggleEvent(i)" class="px-1.5 py-0.5 text-xs text-zinc-500 hover:text-zinc-300 shrink-0">{{ expandedEvents.has(i) ? '▾' : '▸' }}</button>
+            </div>
+            <div v-if="ev.data.data && expandedEvents.has(i)" class="mt-1 bg-zinc-950 rounded p-2 text-xs">
+              <template v-if="Array.isArray(ev.data.data)">
+                <span v-for="(key, ki) in ev.data.data" :key="ki" class="inline-block mr-1.5 mb-1 px-1.5 py-0.5 rounded bg-lime-500/10 text-lime-400 border border-lime-500/20">{{ key }}</span>
+              </template>
+              <pre v-else class="text-lime-300/70 whitespace-pre-wrap break-words max-h-[300px] overflow-auto">{{ JSON.stringify(ev.data.data, null, 2) }}</pre>
+            </div>
           </template>
           <!-- Request start -->
           <template v-else-if="ev.type === EventType.REQUEST_START">

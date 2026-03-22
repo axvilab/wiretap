@@ -83,13 +83,13 @@ class ModelListenerTest extends TestCase
 
     public function test_model_event_not_captured_when_disabled(): void
     {
-        config()->set('wiretap.collect.models', false);
-        $this->assertFalse(config('wiretap.collect.models'));
+        config()->set('wiretap.models.enabled', false);
+        $this->assertFalse(config('wiretap.models.enabled'));
     }
 
     public function test_ignored_model_not_captured(): void
     {
-        config()->set('wiretap.ignore.models', ['*TestModel*']);
+        config()->set('wiretap.models.ignore', ['*TestModel*']);
         Wiretap::start();
 
         // The ignore check happens in the listener, but since we fire events
