@@ -45,7 +45,7 @@ function timeAgo(ts: number): string {
 
     <div v-if="!traces.length" class="text-zinc-500 py-8 text-center">No exceptions found</div>
 
-    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
@@ -66,9 +66,9 @@ function timeAgo(ts: number): string {
           >
             <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(t.ts_start) }}</td>
             <td class="px-4 py-2"><StatusBadge v-if="t.status" :status="t.status" /></td>
-            <td class="px-4 py-2 font-mono text-xs text-red-400">{{ getException(t)?.class }}</td>
+            <td class="px-4 py-2 font-mono text-xs text-red-400 truncate max-w-xs">{{ getException(t)?.class }}</td>
             <td class="px-4 py-2 text-xs text-zinc-300 truncate max-w-xs">{{ getException(t)?.message }}</td>
-            <td class="px-4 py-2 text-xs">
+            <td class="px-4 py-2 text-xs truncate max-w-[200px]">
               <MethodBadge v-if="t.method" :method="t.method" />
               <span class="ml-1 font-mono text-zinc-400">{{ t.uri }}</span>
             </td>

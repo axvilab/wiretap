@@ -89,7 +89,7 @@ const CHANNEL_STYLES: Record<string, string> = {
 
     <div v-if="!deduped.length" class="text-zinc-500 py-8 text-center">No notifications captured yet</div>
 
-    <div v-if="deduped.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="deduped.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
@@ -113,9 +113,9 @@ const CHANNEL_STYLES: Record<string, string> = {
                 :class="CHANNEL_STYLES[n.channel] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'"
               >{{ n.channel }}</span>
             </td>
-            <td class="px-4 py-2 font-mono text-xs text-teal-400">{{ n.class }}</td>
+            <td class="px-4 py-2 font-mono text-xs text-teal-400 truncate max-w-sm">{{ n.class }}</td>
             <td class="px-4 py-2 text-xs text-zinc-400 truncate max-w-[200px]">{{ n.notifiable }}</td>
-            <td class="px-4 py-2 text-xs text-zinc-500 font-mono">{{ n.traceUri }}</td>
+            <td class="px-4 py-2 text-xs text-zinc-500 font-mono truncate max-w-[200px]">{{ n.traceUri }}</td>
           </tr>
         </tbody>
       </table>

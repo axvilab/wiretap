@@ -39,7 +39,7 @@ function timeAgo(ts: number): string {
 
     <div v-if="!traces.length" class="text-zinc-500 py-8 text-center">No scheduled tasks captured yet</div>
 
-    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">

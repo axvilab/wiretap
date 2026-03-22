@@ -49,11 +49,11 @@ func main() {
 	// Servers
 	ingestServer := &http.Server{
 		Addr:    ":" + cfg.IngestPort,
-		Handler: api.NewIngestRouter(recv, store),
+		Handler: api.NewIngestRouter(recv, cfg),
 	}
 	webServer := &http.Server{
 		Addr:    ":" + cfg.WebPort,
-		Handler: api.NewAPIRouter(store, corr, wsHub, mustSubFS(wiretap.FrontendDist, "frontend/dist")),
+		Handler: api.NewAPIRouter(store, corr, wsHub, cfg, mustSubFS(wiretap.FrontendDist, "frontend/dist")),
 	}
 
 	go func() {

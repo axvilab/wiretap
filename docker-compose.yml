@@ -20,6 +20,10 @@ services:
       - WIRETAP_WEB_PORT=8080
       - WIRETAP_INGEST_PORT=9090
       - WIRETAP_SMTP_PORT=1025
+      - WIRETAP_PASSWORD=${WIRETAP_PASSWORD:-}
+      - WIRETAP_INGEST_KEY=${WIRETAP_INGEST_KEY:-}
+      - WIRETAP_APP_URL=http://wiretap-laravel:8000
+      - WIRETAP_REPLAY_SECRET=${WIRETAP_REPLAY_SECRET:-}
       - WIRETAP_REDIS_ADDR=wiretap-redis:6379
     networks:
       - wiretap-net

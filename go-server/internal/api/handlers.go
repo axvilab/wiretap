@@ -143,7 +143,6 @@ func (h *handlers) updateSettings(w http.ResponseWriter, r *http.Request) {
 		"replay_secret":   true,
 		"slow_query_ms":   true,
 		"slow_request_ms": true,
-		"ingest_api_key":  true,
 		"retention_days":  true,
 	}
 

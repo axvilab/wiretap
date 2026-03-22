@@ -40,8 +40,8 @@ func detectNPlusOne(events []storage.Event) []Warning {
 		if count >= 3 {
 			warnings = append(warnings, Warning{
 				Type:       "n_plus_one",
-				Message:    fmt.Sprintf("Same SELECT executed %d times", count),
-				Suggestion: "Consider eager loading with ::with()",
+				Message:    fmt.Sprintf("N+1 detected — same query repeated %d times", count),
+				Suggestion: "Consider eager loading or caching to reduce repeated queries",
 				Count:      count,
 				SQL:        sql,
 			})

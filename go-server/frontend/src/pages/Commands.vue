@@ -49,7 +49,7 @@ function timeAgo(ts: number): string {
 
     <div v-if="!traces.length" class="text-zinc-500 py-8 text-center">No commands captured yet</div>
 
-    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="traces.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
@@ -70,7 +70,7 @@ function timeAgo(ts: number): string {
             @click="$router.push(`/trace/${t.rid}`)"
           >
             <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(t.ts_start) }}</td>
-            <td class="px-4 py-2 font-mono text-xs text-orange-400">{{ getMeta(t).command }}</td>
+            <td class="px-4 py-2 font-mono text-xs text-orange-400 truncate max-w-sm">{{ getMeta(t).command }}</td>
             <td class="px-4 py-2">
               <span class="inline-flex px-1.5 py-0.5 text-xs rounded border"
                 :class="getMeta(t).exit_code === 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"

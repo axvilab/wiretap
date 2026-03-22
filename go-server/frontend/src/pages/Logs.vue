@@ -98,7 +98,7 @@ const LEVELS = ['debug', 'info', 'notice', 'warning', 'error', 'critical']
 
     <div v-if="!filtered.length" class="text-zinc-500 py-8 text-center">No logs captured yet</div>
 
-    <div v-if="filtered.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="filtered.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">

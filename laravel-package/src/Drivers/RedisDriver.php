@@ -19,7 +19,7 @@ class RedisDriver implements DriverInterface
 
             $redis = Redis::connection($this->connection);
 
-            // Get underlying client and push without Laravel prefix
+            // Get underlying client and push without a Laravel prefix
             $client = $redis->client();
             if ($client instanceof \Redis) {
                 // PhpRedis

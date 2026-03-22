@@ -8,32 +8,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axvi/wiretap/internal/storage"
+	"github.com/axvi/wiretap/internal/config"
 )
 
 type replayHandler struct {
-	store  *storage.Store
-	client *http.Client
+	appURL       string
+	replaySecret string
+	client       *http.Client
 }
 
-func newReplayHandler(store *storage.Store) *replayHandler {
+func newReplayHandler(cfg *config.Config) *replayHandler {
 	return &replayHandler{
-		store:  store,
-		client: &http.Client{Timeout: 30 * time.Second},
+		appURL:       cfg.AppURL,
+		replaySecret: cfg.ReplaySecret,
+		client:       &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-func (rh *replayHandler) getConfig() (appURL, secret string) {
-	appURL, _ = rh.store.GetSetting("app_url")
-	secret, _ = rh.store.GetSetting("replay_secret")
-	return
-}
-
-// replayRequest sends the HTTP request directly from Go — no PHP self-call deadlock
+// replayRequest sends the HTTP request directly from Go
 func (rh *replayHandler) replayRequest(w http.ResponseWriter, r *http.Request) {
-	appURL, _ := rh.getConfig()
-	if appURL == "" {
-		http.Error(w, `{"error":"replay not configured — set App URL in Settings"}`, http.StatusServiceUnavailable)
+	if rh.appURL == "" {
+		http.Error(w, `{"error":"WIRETAP_APP_URL not configured"}`, http.StatusServiceUnavailable)
 		return
 	}
 
@@ -52,7 +47,7 @@ func (rh *replayHandler) replayRequest(w http.ResponseWriter, r *http.Request) {
 	if method == "" {
 		method = "GET"
 	}
-	targetURL := strings.TrimRight(appURL, "/") + body.URI
+	targetURL := strings.TrimRight(rh.appURL, "/") + body.URI
 
 	var reqBody io.Reader
 	if body.Body != "" {
@@ -87,16 +82,15 @@ func (rh *replayHandler) replayRequest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// proxy forwards request to Laravel's ReplayController (for job/broadcast/command)
+// proxy forwards request to Laravel's ReplayController
 func (rh *replayHandler) proxy(laravelPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		appURL, secret := rh.getConfig()
-		if secret == "" || appURL == "" {
-			http.Error(w, `{"error":"replay not configured — set App URL and Replay Secret in Settings"}`, http.StatusServiceUnavailable)
+		if rh.replaySecret == "" || rh.appURL == "" {
+			http.Error(w, `{"error":"WIRETAP_APP_URL and WIRETAP_REPLAY_SECRET must be configured"}`, http.StatusServiceUnavailable)
 			return
 		}
 
-		targetURL := strings.TrimRight(appURL, "/") + "/_wiretap/" + laravelPath
+		targetURL := strings.TrimRight(rh.appURL, "/") + "/_wiretap/" + laravelPath
 
 		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, targetURL, r.Body)
 		if err != nil {
@@ -104,7 +98,7 @@ func (rh *replayHandler) proxy(laravelPath string) http.HandlerFunc {
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Wiretap-Secret", secret)
+		req.Header.Set("X-Wiretap-Secret", rh.replaySecret)
 
 		resp, err := rh.client.Do(req)
 		if err != nil {
@@ -120,8 +114,7 @@ func (rh *replayHandler) proxy(laravelPath string) http.HandlerFunc {
 }
 
 func (rh *replayHandler) configHandler(w http.ResponseWriter, r *http.Request) {
-	appURL, secret := rh.getConfig()
-	enabled := appURL != "" && secret != ""
+	enabled := rh.appURL != "" && rh.replaySecret != ""
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"enabled":%t}`, enabled)
 }

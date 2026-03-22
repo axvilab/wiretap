@@ -34,7 +34,7 @@ function timeAgo(ts: number): string {
 
     <div v-if="!emails.length" class="text-zinc-500 py-8 text-center">No emails intercepted yet</div>
 
-    <div v-if="emails.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="emails.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">

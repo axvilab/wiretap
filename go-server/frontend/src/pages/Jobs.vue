@@ -86,13 +86,13 @@ const STATUS_STYLES: Record<string, string> = {
 
 <template>
   <div class="p-6 space-y-4">
-    <h1 class="text-2xl font-bold">Jobs</h1>
+    <h1 class="text-2xl font-bold">Jobs ({{ total }})</h1>
 
     <NewItemsBanner :types="[TraceType.JOB]" @refresh="load" />
 
     <div v-if="!jobs.length" class="text-zinc-500 py-8 text-center">No jobs found</div>
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table v-if="jobs.length" class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">
@@ -113,7 +113,7 @@ const STATUS_STYLES: Record<string, string> = {
             @click="$router.push(`/trace/${j.rid}`)"
           >
             <td class="px-4 py-2 text-zinc-500 font-mono text-xs">{{ timeAgo(j.ts_start) }}</td>
-            <td class="px-4 py-2 font-mono text-xs text-purple-400">{{ getMeta(j).job_class }}</td>
+            <td class="px-4 py-2 font-mono text-xs text-purple-400 truncate max-w-sm">{{ getMeta(j).job_class }}</td>
             <td class="px-4 py-2 text-xs text-zinc-400">{{ getMeta(j).queue || 'default' }}</td>
             <td class="px-4 py-2">
               <span class="text-xs px-2 py-0.5 rounded" :class="STATUS_STYLES[getMeta(j).status] || STATUS_STYLES.completed">

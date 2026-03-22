@@ -133,7 +133,6 @@ func TestUpdateSettingsAllAllowedKeys(t *testing.T) {
 		"replay_secret":"secret",
 		"slow_query_ms":"100",
 		"slow_request_ms":"1000",
-		"ingest_api_key":"key123",
 		"retention_days":"7"
 	}`
 	req := httptest.NewRequest("PUT", "/api/settings", strings.NewReader(body))
@@ -151,7 +150,6 @@ func TestUpdateSettingsAllAllowedKeys(t *testing.T) {
 		"replay_secret":   "secret",
 		"slow_query_ms":   "100",
 		"slow_request_ms": "1000",
-		"ingest_api_key":  "key123",
 		"retention_days":  "7",
 	}
 	for key, expected := range checks {

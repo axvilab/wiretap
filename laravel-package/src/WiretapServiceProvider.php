@@ -329,11 +329,23 @@ class WiretapServiceProvider extends ServiceProvider
 
         Event::listen(NotificationSent::class, function (NotificationSent $event) {
             if (Wiretap::$rid === '') return;
-            Wiretap::send('notification.sent', [
+
+            $data = [
                 'channel' => $event->channel,
                 'class' => get_class($event->notification),
                 'notifiable' => get_class($event->notifiable),
-            ]);
+            ];
+
+            // Capture notification properties (constructor args)
+            try {
+                $properties = Wiretap::extractJobProperties($event->notification);
+                $properties = Wiretap::maskSensitive($properties);
+                if (! empty($properties)) {
+                    $data['data'] = $properties;
+                }
+            } catch (\Throwable) {}
+
+            Wiretap::send('notification.sent', $data);
         });
     }
 

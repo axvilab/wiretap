@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { api, type Trace } from '@/api'
 import { EventType } from '@/constants'
 import Pagination from '@/components/Pagination.vue'
@@ -83,7 +83,7 @@ const paged = () => broadcasts.value.slice((page.value - 1) * perPage.value, pag
 
     <div v-if="!broadcasts.length" class="text-zinc-500 py-8 text-center">No broadcasts captured yet</div>
 
-    <div v-if="broadcasts.length" class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div v-if="broadcasts.length" class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">

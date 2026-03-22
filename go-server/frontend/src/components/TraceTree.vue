@@ -74,7 +74,7 @@ async function goToMail(traceRID: string) {
       <span v-if="(depth || 0) > 0" class="text-zinc-400 text-base w-5">{{ expanded ? '▾' : '▸' }}</span>
       <span v-if="node.trace.type === TraceType.REQUEST" class="text-sky-400 text-xs font-bold">{{ node.trace.method }}</span>
       <span v-else class="text-purple-400 text-xs font-bold">{{ node.trace.type }}</span>
-      <span class="font-mono text-sm text-zinc-200">
+      <span class="font-mono text-sm text-zinc-200 truncate">
         {{ node.trace.uri || parseMeta(node.trace.meta_json).job_class || '' }}
       </span>
       <span v-if="node.trace.status" class="text-xs px-1.5 py-0.5 rounded border"

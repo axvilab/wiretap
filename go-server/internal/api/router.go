@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/axvi/wiretap/internal/config"
 	"github.com/axvi/wiretap/internal/correlator"
 	"github.com/axvi/wiretap/internal/hub"
 	"github.com/axvi/wiretap/internal/receiver"
@@ -12,29 +13,27 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewIngestRouter(recv *receiver.HTTPReceiver, store *storage.Store) http.Handler {
+func NewIngestRouter(recv *receiver.HTTPReceiver, cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
-	r.Use(ingestKeyMiddleware(store))
+	r.Use(ingestKeyMiddleware(cfg))
 	r.Post("/ingest", recv.Handler())
 	r.Get("/health", healthHandler)
 	return r
 }
 
-func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.Hub, frontendFS ...fs.FS) http.Handler {
+func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.Hub, cfg *config.Config, frontendFS ...fs.FS) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
 
 	// Auth
-	am := newAuthManager(store)
+	am := newAuthManager(store, cfg)
 	r.Use(am.middleware)
 
-	r.Post("/api/auth/setup", am.setupHandler)
 	r.Post("/api/auth/login", am.loginHandler)
 	r.Get("/api/auth/status", am.statusHandler)
 	r.Post("/api/auth/logout", am.logoutHandler)
-	r.Post("/api/auth/change-password", am.changePasswordHandler)
 
 	h := &handlers{store: store, correlator: corr}
 
@@ -55,7 +54,7 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r.Post("/api/storage/clear", h.clearData)
 
 	// Replay proxy
-	rh := newReplayHandler(store)
+	rh := newReplayHandler(cfg)
 	r.Get("/api/replay/config", rh.configHandler)
 	r.Post("/api/replay/request", rh.replayRequest)
 	r.Post("/api/replay/job", rh.proxy("retry-job"))

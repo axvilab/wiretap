@@ -74,7 +74,7 @@ function formatTime(ts: number): string {
         <div>
           <h2 class="text-sm font-semibold text-zinc-400 mb-2">Payload</h2>
           <div class="bg-zinc-950 rounded p-4">
-            <pre class="text-sm text-zinc-300 whitespace-pre-wrap">{{ JSON.stringify(broadcast.payload, null, 2) }}</pre>
+            <pre class="text-sm text-zinc-300 whitespace-pre-wrap break-words">{{ JSON.stringify(broadcast.payload, null, 2) }}</pre>
           </div>
         </div>
 

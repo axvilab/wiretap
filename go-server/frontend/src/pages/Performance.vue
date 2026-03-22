@@ -30,7 +30,7 @@ watch(period, load)
     </div>
 
     <!-- Slow Endpoints -->
-    <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <div class="px-4 py-3 border-b border-zinc-800 font-semibold text-sm">Slow Endpoints (Top 10)</div>
       <div v-if="!data?.slow_endpoints?.length" class="px-4 py-6 text-zinc-500 text-center text-sm">No slow endpoints</div>
       <table v-else class="w-full text-sm">
@@ -64,7 +64,7 @@ watch(period, load)
     </div>
 
     <!-- Slow Queries -->
-    <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <div class="px-4 py-3 border-b border-zinc-800 font-semibold text-sm">Slow Queries (Top 10)</div>
       <div v-if="!data?.slow_queries?.length" class="px-4 py-6 text-zinc-500 text-center text-sm">No slow queries</div>
       <table v-else class="w-full text-sm">
@@ -86,7 +86,7 @@ watch(period, load)
             <td class="px-4 py-2 text-right font-mono text-xs text-amber-400 whitespace-nowrap">{{ q.time_ms }}ms</td>
             <td class="px-4 py-2 text-xs text-zinc-500 font-mono truncate max-w-[200px]">
               <span class="text-zinc-600">{{ q.trace_type }}</span>
-              <span v-if="q.trace_uri" class="ml-1">{{ q.trace_uri }}</span>
+              <span v-if="q.trace_uri" class="ml-1 truncate">{{ q.trace_uri }}</span>
             </td>
           </tr>
         </tbody>

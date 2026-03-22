@@ -27,6 +27,7 @@ onMounted(async () => {
         channel: ev.data.channel,
         class: ev.data.class,
         notifiable: ev.data.notifiable,
+        data: ev.data.data || null,
         status: ev.type === 'notification.sent' ? 'sent' : 'sending',
         ts: tree.trace.ts_start + ev.ts,
         traceUri: tree.trace.uri || tree.trace.type,
@@ -76,6 +77,14 @@ function formatTime(ts: number): string {
           <h2 class="text-sm font-semibold text-zinc-400 mb-2">Notifiable</h2>
           <div class="bg-zinc-950 rounded p-4">
             <pre class="text-sm text-zinc-300 font-mono">{{ notification.notifiable }}</pre>
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div v-if="notification.data && Object.keys(notification.data).length">
+          <h2 class="text-sm font-semibold text-zinc-400 mb-2">Data</h2>
+          <div class="bg-zinc-950 rounded p-4">
+            <pre class="text-sm text-zinc-300 whitespace-pre-wrap break-words">{{ JSON.stringify(notification.data, null, 2) }}</pre>
           </div>
         </div>
 

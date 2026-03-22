@@ -30,8 +30,8 @@ async function downloadFile(url: string, filename: string) {
         <h1 class="text-xl font-bold">{{ email.subject }}</h1>
         <div class="text-sm text-zinc-400 space-y-1">
           <div>From: <span class="text-zinc-200">{{ email.from }}</span></div>
-          <div>To: <span class="text-zinc-200">{{ email.to.join(', ') }}</span></div>
-          <div v-if="email.cc?.length">Cc: <span class="text-zinc-200">{{ email.cc.join(', ') }}</span></div>
+          <div class="break-words">To: <span class="text-zinc-200">{{ email.to.join(', ') }}</span></div>
+          <div v-if="email.cc?.length" class="break-words">Cc: <span class="text-zinc-200">{{ email.cc.join(', ') }}</span></div>
         </div>
       </div>
 

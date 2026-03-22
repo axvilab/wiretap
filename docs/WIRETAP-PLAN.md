@@ -1545,11 +1545,10 @@ Install:
 ## Completed Beyond Original Plan
 
 ### Authentication & Security
-- [x] Web UI password authentication (bcrypt + persistent sessions in DuckDB)
-- [x] Setup flow (first-launch password creation)
-- [x] Change password in Settings
-- [x] Ingest API key protection (X-Wiretap-Key header)
-- [x] Session persistence across server restarts
+- [x] Env-based password authentication (WIRETAP_PASSWORD)
+- [x] Session cookies stored in DuckDB (persistent across restarts)
+- [x] Ingest API key protection (WIRETAP_INGEST_KEY → X-Wiretap-Key header)
+- [x] All security config via environment variables (like Postgres/MySQL)
 
 ### Replay/Retry System
 - [x] Replay Request (Go direct HTTP, no PHP self-call deadlock)
@@ -1560,42 +1559,61 @@ Install:
 - [x] ReplayModal with editable forms for all types
 - [x] php artisan wiretap:replay-secret command
 - [x] Masked field warnings, large payload warnings
+- [x] Replay config via env (WIRETAP_APP_URL, WIRETAP_REPLAY_SECRET)
 
-### Data Collection Enhancements
+### Data Collection (18 listeners)
 - [x] Gzip compression (PHP drivers → Go receiver)
 - [x] Job payload capture with masking and serialized replay
 - [x] Request body capture with field masking (enabled by default)
 - [x] Log listener (MessageLogged event)
-- [x] Ignore filters for requests, jobs, commands, broadcasts (wildcard patterns)
-- [x] Validation listener fix (via renderable exception handler)
-- [x] FormRequest validation support
+- [x] Model listener (eloquent.created/updated/deleted)
+- [x] View listener (View::composer for rendered views)
+- [x] Notification data capture (public properties via reflection)
+- [x] HTTP response body capture (skip binary, 512KB limit)
+- [x] Ignore filters for requests, jobs, commands, broadcasts, models, views (wildcard patterns)
+- [x] Validation listener (via renderable exception handler, FormRequest support)
 - [x] Laravel connection warning (Log::warning on ingest failure)
 
-### New UI Pages
+### Redis Driver
+- [x] Go Redis receiver (BRPOP consumer)
+- [x] PHP RedisDriver bypasses Laravel prefix (PhpRedis + Predis support)
+- [x] Gzip compression in Redis driver
+- [x] Stress tested: 1200 requests, 0 errors, 7.4 RPS
+
+### New UI Pages (13 total)
 - [x] Activity page (root traces only — request, command, schedule)
 - [x] Performance page (Top 10 Slow Endpoints + Top 10 Slow Queries from all trace types)
 - [x] Logs page with level filter + detail page
 - [x] Notifications page with detail page
-- [x] Settings tabs (General, Security, Replay, Info)
-- [x] Configurable analysis thresholds (slow query/request ms)
-- [x] Data retention settings
+- [x] Settings tabs: General (thresholds, retention), Storage (DB stats, clear data), Info (env examples)
+- [x] Dashboard: 7 time periods (1m, 5m, 15m, 30m, 1h, 24h, 7d)
 
 ### UI Improvements
 - [x] NewItemsBanner on all table pages (non-intrusive WebSocket updates)
-- [x] TraceTree: dump collapsible with preview, log truncated with Open, validation collapsible
-- [x] Open buttons on log, exception, notification, broadcast, mail events in trace tree
+- [x] TraceTree: all 18 event types formatted with EventType enums
+- [x] TraceTree: dump collapsible, log truncated + Open, validation collapsible, query bindings expandable
+- [x] TraceTree: auth (login/logout/failed), gate (allowed/denied), http client (headers/body/response)
+- [x] TraceTree: model (created/updated/deleted + class + #id), view (name + path)
+- [x] TraceTree: request.start (method+uri+ip+headers), request.end (status+duration+memory)
+- [x] Open buttons on log, exception, notification, broadcast, mail events
+- [x] All tables: overflow-x-auto for horizontal scroll, truncate on long text columns
+- [x] Total count in all page headers
+- [x] Warning icons: 🔄 N+1, 🐢 Slow, ⊘ Duplicate, ✕ Exception
 - [x] Favicon (SVG)
-- [x] 13 sidebar pages total
+- [x] Storage tab: DB size (KB/MB), traces/emails/jobs count, manual clear data
 
 ### Testing
-- [x] Go tests: 37 (storage, analyzer, receiver gzip, API handlers, auth, sessions, ingest key)
-- [x] PHP tests: 24 (Wiretap unit, ignore filters, ReplayController, GenerateReplaySecret)
-- [x] Vitest: 28 (API layer, NewItemsBanner, ReplayModal)
+- [x] Go tests: 46+ (storage, analyzer, API handlers, auth, sessions, ingest key, replay, dashboard)
+- [x] PHP tests: 83+ (all 18 listeners, replay controller, validation, commands, ignore filters, masking)
+- [x] Vitest: 45+ (API layer, NewItemsBanner, ReplayModal, Login)
+- [x] Laravel compatibility: tested on Laravel 11, 12, 13
+- [x] Stress test: 1200 requests via wiretap:traffic command, 0 errors
 
 ### Test Application
-- [x] Comprehensive test routes for all 16 listener types
-- [x] TestNotification class
-- [x] CreateOrderRequest FormRequest
-- [x] OrderShipped broadcast event
-- [x] ProcessOrder + UpdateInventory job chain
+- [x] 21 HTTP test routes covering all listener types
+- [x] 3 artisan test commands (inspire, test:reports, test:cleanup)
+- [x] wiretap:traffic command for load testing (configurable rounds + delay)
+- [x] TestNotification, CreateOrderRequest, OrderShipped, ProcessOrder, UpdateInventory
+- [x] Nested blade views (layout → page → components)
+- [x] Model events (User create/update/delete)
 - [x] broadcasting.php config with Redis

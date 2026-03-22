@@ -20,22 +20,20 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const authState = ref<'loading' | 'setup' | 'login' | 'ready'>('loading')
+const authState = ref<'loading' | 'login' | 'ready'>('loading')
 
 async function checkAuth() {
   try {
     const res = await fetch('/api/auth/status')
     const data = await res.json()
 
-    if (!data.setup_done) {
-      authState.value = 'setup'
-    } else if (!data.authenticated) {
-      authState.value = 'login'
-    } else {
+    if (!data.auth_enabled || data.authenticated) {
       authState.value = 'ready'
+    } else {
+      authState.value = 'login'
     }
   } catch {
-    authState.value = 'ready' // fallback if auth endpoint unavailable
+    authState.value = 'ready'
   }
 }
 
@@ -53,8 +51,7 @@ onMounted(checkAuth)
     <div class="text-zinc-500">Loading...</div>
   </div>
 
-  <!-- Setup / Login -->
-  <Login v-else-if="authState === 'setup'" :setup="true" @success="authState = 'ready'" />
+  <!-- Login -->
   <Login v-else-if="authState === 'login'" @success="authState = 'ready'" />
 
   <!-- App -->

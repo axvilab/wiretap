@@ -48,7 +48,7 @@ function parseMeta(t: Trace) {
 <template>
   <div class="p-6 space-y-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Requests</h1>
+      <h1 class="text-2xl font-bold">Requests ({{ total }})</h1>
       <div class="flex gap-2">
         <input
           v-model="uriFilter"
@@ -64,7 +64,7 @@ function parseMeta(t: Trace) {
 
     <NewItemsBanner :types="[TraceType.REQUEST]" @refresh="load" />
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-lg">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-zinc-500 text-xs border-b border-zinc-800">

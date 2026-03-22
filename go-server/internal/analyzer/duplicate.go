@@ -35,7 +35,8 @@ func detectDuplicate(events []storage.Event) []Warning {
 		if count >= 2 {
 			warnings = append(warnings, Warning{
 				Type:       "duplicate_query",
-				Message:    fmt.Sprintf("Duplicate query executed %d times, consider caching", count),
+				Message:    fmt.Sprintf("Duplicate query executed %d times", count),
+				Suggestion: "Consider caching the result to avoid repeated identical queries",
 				Count:      count,
 				SQL:        key.SQL,
 			})

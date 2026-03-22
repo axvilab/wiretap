@@ -18,6 +18,10 @@ type Config struct {
 	RedisPassword string `json:"redis_password"`
 	RedisDB       int    `json:"redis_db"`
 	RedisQueue    string `json:"redis_queue"`
+	Password      string `json:"password"`
+	IngestKey     string `json:"ingest_key"`
+	AppURL        string `json:"app_url"`
+	ReplaySecret  string `json:"replay_secret"`
 }
 
 func Load() *Config {
@@ -33,6 +37,10 @@ func Load() *Config {
 		RedisPassword: envOr("WIRETAP_REDIS_PASSWORD", ""),
 		RedisDB:       envInt("WIRETAP_REDIS_DB", 0),
 		RedisQueue:    envOr("WIRETAP_REDIS_QUEUE", "wiretap:events"),
+		Password:      envOr("WIRETAP_PASSWORD", ""),
+		IngestKey:     envOr("WIRETAP_INGEST_KEY", ""),
+		AppURL:        envOr("WIRETAP_APP_URL", ""),
+		ReplaySecret:  envOr("WIRETAP_REPLAY_SECRET", ""),
 	}
 
 	// Try loading from config file
