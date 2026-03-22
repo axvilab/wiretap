@@ -14,6 +14,8 @@ import (
 	"github.com/axvi/wiretap/internal/config"
 	"github.com/axvi/wiretap/internal/correlator"
 	"github.com/axvi/wiretap/internal/hub"
+	"github.com/axvi/wiretap/internal/monitor"
+	"github.com/axvi/wiretap/internal/notifier"
 	"github.com/axvi/wiretap/internal/receiver"
 	wiretapsmtp "github.com/axvi/wiretap/internal/smtp"
 	"github.com/axvi/wiretap/internal/storage"
@@ -38,10 +40,17 @@ func main() {
 	corr := correlator.New(store)
 	wsHub := hub.New()
 
+	// Notification manager
+	notifyMgr := notifier.NewManager(store)
+
 	// Ingest channel + batch writer
 	ingestCh := make(chan *storage.TracePayload, 1000)
-	bw := receiver.NewBatchWriter(store, corr, wsHub, ingestCh)
+	bw := receiver.NewBatchWriter(store, corr, wsHub, notifyMgr, ingestCh)
 	go bw.Run()
+
+	// Site monitor (created here so it can be passed to API router)
+	monitorCtx, monitorCancel := context.WithCancel(context.Background())
+	mon := monitor.New(store, wsHub, notifyMgr)
 
 	// HTTP receiver
 	recv := receiver.NewHTTP(ingestCh)
@@ -53,7 +62,7 @@ func main() {
 	}
 	webServer := &http.Server{
 		Addr:    ":" + cfg.WebPort,
-		Handler: api.NewAPIRouter(store, corr, wsHub, cfg, mustSubFS(wiretap.FrontendDist, "frontend/dist")),
+		Handler: api.NewAPIRouter(store, corr, wsHub, cfg, notifyMgr, mon, mustSubFS(wiretap.FrontendDist, "frontend/dist")),
 	}
 
 	go func() {
@@ -86,6 +95,9 @@ func main() {
 		log.Printf("Redis receiver connected to %s (queue: %s)", cfg.RedisAddr, cfg.RedisQueue)
 	}
 
+	// Start monitor goroutines
+	go mon.Run(monitorCtx)
+
 	log.Printf("Wiretap ready — UI :%s | Ingest :%s | SMTP :%s", cfg.WebPort, cfg.IngestPort, cfg.SMTPPort)
 
 	// Graceful shutdown
@@ -97,6 +109,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	monitorCancel()
 	if redisCancel != nil {
 		redisCancel()
 	}

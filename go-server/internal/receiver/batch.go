@@ -4,9 +4,12 @@ import (
 	"log"
 	"time"
 
+	"encoding/json"
+
 	"github.com/axvi/wiretap/internal/analyzer"
 	"github.com/axvi/wiretap/internal/correlator"
 	"github.com/axvi/wiretap/internal/hub"
+	"github.com/axvi/wiretap/internal/notifier"
 	"github.com/axvi/wiretap/internal/storage"
 )
 
@@ -19,16 +22,18 @@ type BatchWriter struct {
 	store      *storage.Store
 	correlator *correlator.Correlator
 	hub        *hub.Hub
+	notify     *notifier.Manager
 	ch         <-chan *storage.TracePayload
 	buf        []*storage.TracePayload
 	ticker     *time.Ticker
 }
 
-func NewBatchWriter(store *storage.Store, corr *correlator.Correlator, h *hub.Hub, ch <-chan *storage.TracePayload) *BatchWriter {
+func NewBatchWriter(store *storage.Store, corr *correlator.Correlator, h *hub.Hub, notify *notifier.Manager, ch <-chan *storage.TracePayload) *BatchWriter {
 	return &BatchWriter{
 		store:      store,
 		correlator: corr,
 		hub:        h,
+		notify:     notify,
 		ch:         ch,
 		buf:        make([]*storage.TracePayload, 0, batchSize),
 		ticker:     time.NewTicker(flushInterval),
@@ -83,6 +88,34 @@ func (bw *BatchWriter) flush() {
 
 		// Broadcast to WebSocket clients
 		bw.hub.Broadcast("trace.new", trace)
+
+		// Alert on exceptions + touch schedule heartbeats
+		if bw.notify != nil {
+			for _, ev := range p.Events {
+				if ev.Type == "exception" {
+					var data struct {
+						Class   string `json:"class"`
+						Message string `json:"message"`
+					}
+					json.Unmarshal(ev.Data, &data)
+					bw.notify.Notify("exception", notifier.Message{
+						Title: "Exception: " + data.Class,
+						Body:  data.Message,
+						Level: "critical",
+						URL:   "/trace/" + p.RID,
+					})
+				}
+				if ev.Type == "schedule.end" {
+					var data struct {
+						Command string `json:"command"`
+					}
+					json.Unmarshal(ev.Data, &data)
+					if data.Command != "" {
+						bw.store.TouchScheduleHeartbeat(data.Command, p.TsEnd)
+					}
+				}
+			}
+		}
 	}
 
 	bw.buf = bw.buf[:0]

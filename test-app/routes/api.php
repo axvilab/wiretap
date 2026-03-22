@@ -176,7 +176,5 @@ Route::get('/kitchen-sink', function () {
     return response()->json(['kitchen_sink' => true]);
 });
 
-// === Health ===
-Route::get('/health', function () {
-    return response()->json(['status' => 'ok']);
-});
+// === Health (Spatie) ===
+Route::get('/health', \Spatie\Health\Http\Controllers\HealthCheckJsonResultsController::class);

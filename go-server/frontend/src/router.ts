@@ -18,6 +18,7 @@ import Notifications from './pages/Notifications.vue'
 import NotificationDetail from './pages/NotificationDetail.vue'
 import LogDetail from './pages/LogDetail.vue'
 import Settings from './pages/Settings.vue'
+import Monitoring from './pages/Monitoring.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -39,6 +40,7 @@ export const router = createRouter({
     { path: '/logs/:rid/:index', component: LogDetail, props: true },
     { path: '/notifications', component: Notifications },
     { path: '/notifications/:rid/:index', component: NotificationDetail, props: true },
+    { path: '/monitoring', component: Monitoring },
     { path: '/settings', component: Settings },
   ],
 })

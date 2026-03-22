@@ -139,11 +139,14 @@ func (h *handlers) updateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	allowed := map[string]bool{
-		"app_url":         true,
-		"replay_secret":   true,
-		"slow_query_ms":   true,
-		"slow_request_ms": true,
-		"retention_days":  true,
+		"app_url":                   true,
+		"replay_secret":             true,
+		"slow_query_ms":             true,
+		"slow_request_ms":           true,
+		"retention_days":            true,
+		"monitor_enabled":           true,
+		"monitor_default_interval":  true,
+		"ssl_warning_days":          true,
 	}
 
 	for k, v := range body {

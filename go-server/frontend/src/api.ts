@@ -92,6 +92,117 @@ export interface DashboardData {
   slow_queries: { sql: string; time_ms: number; trace_rid: string; trace_type: string; trace_uri: string }[]
 }
 
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+// --- Monitor types ---
+
+export interface MonitorSite {
+  id: number
+  url: string
+  name: string
+  check_ssl: boolean
+  health_url: string
+  auth_type: string
+  auth_json: string
+  interval_s: number
+  is_primary: boolean
+}
+
+export interface MonitorCheck {
+  id: number
+  site_id: number
+  status: number
+  response_ms: number
+  error: string
+  checked_at: number
+}
+
+export interface MonitorSSL {
+  site_id: number
+  issuer: string
+  subject: string
+  expires_at: number
+  days_remaining: number
+  is_valid: boolean
+  error: string
+  checked_at: number
+}
+
+export interface MonitorHealth {
+  site_id: number
+  status: string
+  data_json: string
+  checked_at: number
+}
+
+export interface MonitorDomain {
+  site_id: number
+  domain: string
+  registrar: string
+  expires_at: number
+  days_remaining: number
+  error: string
+  checked_at: number
+}
+
+export interface MonitorStatus {
+  site: MonitorSite
+  ssl: MonitorSSL | null
+  health: MonitorHealth | null
+  domain: MonitorDomain | null
+  last_check: MonitorCheck | null
+  uptime_pct: number
+}
+
+export interface NotificationChannel {
+  id: number
+  type: string
+  name: string
+  config: string
+  enabled: boolean
+}
+
+export interface AlertRule {
+  id: number
+  type: string
+  channel_id: number
+  config: string
+  enabled: boolean
+  cooldown_m: number
+}
+
+export interface AlertLog {
+  id: number
+  rule_id: number
+  message: string
+  sent_at: number
+}
+
+export interface ScheduleHeartbeat {
+  id: number
+  command: string
+  mode: string
+  max_gap_m: number
+  at_time: string
+  grace_m: number
+  last_seen_at: number
+  alerted: boolean
+}
+
 export const api = {
   dashboard: (period = '1h') => get<DashboardData>(`/dashboard?period=${period}`),
   requests: (params = '') => get<ListResult>(`/requests${params ? '?' + params : ''}`),
@@ -120,4 +231,36 @@ export const api = {
     post<{ success: boolean; error?: string }>('/replay/broadcast', data),
   replayCommand: (data: { command: string; input?: string }) =>
     post<{ success: boolean; output?: string; exit_code?: number; error?: string }>('/replay/command', data),
+
+  // --- Monitor ---
+  monitorStatus: () => get<MonitorStatus[]>('/monitor/status'),
+  monitorSites: () => get<MonitorSite[]>('/monitor/sites'),
+  monitorCreateSite: (site: Partial<MonitorSite>) => post<MonitorSite>('/monitor/sites', site),
+  monitorUpdateSite: (id: number, site: Partial<MonitorSite>) => put<any>(`/monitor/sites/${id}`, site),
+  monitorDeleteSite: (id: number) => del<any>(`/monitor/sites/${id}`),
+  monitorChecks: (siteId: number, limit = 100) => get<MonitorCheck[]>(`/monitor/checks/${siteId}?limit=${limit}`),
+  monitorSSL: (siteId: number) => get<MonitorSSL | null>(`/monitor/ssl/${siteId}`),
+  monitorHealth: (siteId: number) => get<MonitorHealth | null>(`/monitor/health/${siteId}`),
+  monitorDomain: (siteId: number) => get<MonitorDomain | null>(`/monitor/domain/${siteId}`),
+
+  // --- Schedule Heartbeats ---
+  knownScheduleCommands: () => get<string[]>('/monitor/schedule-commands'),
+  scheduleHeartbeats: () => get<ScheduleHeartbeat[]>('/monitor/schedules'),
+  createScheduleHeartbeat: (b: Partial<ScheduleHeartbeat>) => post<ScheduleHeartbeat>('/monitor/schedules', b),
+  updateScheduleHeartbeat: (id: number, b: Partial<ScheduleHeartbeat>) => put<any>(`/monitor/schedules/${id}`, b),
+  deleteScheduleHeartbeat: (id: number) => del<any>(`/monitor/schedules/${id}`),
+
+  // --- Notifications ---
+  notificationChannels: () => get<NotificationChannel[]>('/notifications/channels'),
+  createNotificationChannel: (ch: Partial<NotificationChannel>) => post<NotificationChannel>('/notifications/channels', ch),
+  updateNotificationChannel: (id: number, ch: Partial<NotificationChannel>) => put<any>(`/notifications/channels/${id}`, ch),
+  deleteNotificationChannel: (id: number) => del<any>(`/notifications/channels/${id}`),
+  testNotificationChannel: (id: number) => post<any>(`/notifications/channels/${id}/test`, {}),
+
+  alertRules: () => get<AlertRule[]>('/notifications/rules'),
+  createAlertRule: (rule: Partial<AlertRule>) => post<AlertRule>('/notifications/rules', rule),
+  updateAlertRule: (id: number, rule: Partial<AlertRule>) => put<any>(`/notifications/rules/${id}`, rule),
+  deleteAlertRule: (id: number) => del<any>(`/notifications/rules/${id}`),
+
+  alertLogs: (limit = 50) => get<AlertLog[]>(`/notifications/logs?limit=${limit}`),
 }

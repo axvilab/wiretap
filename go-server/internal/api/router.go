@@ -7,6 +7,7 @@ import (
 	"github.com/axvi/wiretap/internal/config"
 	"github.com/axvi/wiretap/internal/correlator"
 	"github.com/axvi/wiretap/internal/hub"
+	"github.com/axvi/wiretap/internal/notifier"
 	"github.com/axvi/wiretap/internal/receiver"
 	"github.com/axvi/wiretap/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -22,7 +23,7 @@ func NewIngestRouter(recv *receiver.HTTPReceiver, cfg *config.Config) http.Handl
 	return r
 }
 
-func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.Hub, cfg *config.Config, frontendFS ...fs.FS) http.Handler {
+func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.Hub, cfg *config.Config, notifyMgr *notifier.Manager, siteReloader SiteReloader, frontendFS ...fs.FS) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
@@ -62,6 +63,36 @@ func NewAPIRouter(store *storage.Store, corr *correlator.Correlator, wsHub *hub.
 	r.Post("/api/replay/broadcast", rh.proxy("replay-broadcast"))
 	r.Post("/api/replay/command", rh.proxy("replay-command"))
 
+	// Monitor API
+	mh := &monitorHandlers{store: store, reloader: siteReloader}
+	r.Get("/api/monitor/sites", mh.listSites)
+	r.Post("/api/monitor/sites", mh.createSite)
+	r.Put("/api/monitor/sites/{id}", mh.updateSite)
+	r.Delete("/api/monitor/sites/{id}", mh.deleteSite)
+	r.Get("/api/monitor/status", mh.status)
+	r.Get("/api/monitor/checks/{siteID}", mh.checks)
+	r.Get("/api/monitor/ssl/{siteID}", mh.ssl)
+	r.Get("/api/monitor/health/{siteID}", mh.health)
+	r.Get("/api/monitor/domain/{siteID}", mh.domain)
+	r.Get("/api/monitor/schedule-commands", mh.knownScheduleCommands)
+	r.Get("/api/monitor/schedules", mh.listSchedules)
+	r.Post("/api/monitor/schedules", mh.createSchedule)
+	r.Put("/api/monitor/schedules/{id}", mh.updateSchedule)
+	r.Delete("/api/monitor/schedules/{id}", mh.deleteSchedule)
+
+	// Notification API
+	nh := &notificationHandlers{store: store, notify: notifyMgr}
+	r.Get("/api/notifications/channels", nh.listChannels)
+	r.Post("/api/notifications/channels", nh.createChannel)
+	r.Put("/api/notifications/channels/{id}", nh.updateChannel)
+	r.Delete("/api/notifications/channels/{id}", nh.deleteChannel)
+	r.Post("/api/notifications/channels/{id}/test", nh.testChannel)
+	r.Get("/api/notifications/rules", nh.listRules)
+	r.Post("/api/notifications/rules", nh.createRule)
+	r.Put("/api/notifications/rules/{id}", nh.updateRule)
+	r.Delete("/api/notifications/rules/{id}", nh.deleteRule)
+	r.Get("/api/notifications/logs", nh.listLogs)
+
 	// Serve embedded frontend (prod) — fallback to index.html for SPA
 	if len(frontendFS) > 0 && frontendFS[0] != nil {
 		dist := frontendFS[0]
@@ -93,7 +124,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {

@@ -54,6 +54,89 @@ func (s *Store) migrate() error {
 			trace_rid       VARCHAR DEFAULT '',
 			created_at      DOUBLE NOT NULL
 		)`,
+	// Monitoring & notifications tables
+	`CREATE SEQUENCE IF NOT EXISTS monitor_sites_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS monitor_sites (
+		id           INTEGER PRIMARY KEY DEFAULT nextval('monitor_sites_seq'),
+		url          VARCHAR NOT NULL,
+		name         VARCHAR NOT NULL DEFAULT '',
+		check_ssl    BOOLEAN NOT NULL DEFAULT true,
+		health_url   VARCHAR NOT NULL DEFAULT '',
+		auth_type    VARCHAR NOT NULL DEFAULT 'none',
+		auth_json    VARCHAR NOT NULL DEFAULT '{}',
+		interval_s   INTEGER NOT NULL DEFAULT 30,
+		is_primary   BOOLEAN NOT NULL DEFAULT false,
+		created_at   DOUBLE NOT NULL DEFAULT 0
+	)`,
+	`CREATE SEQUENCE IF NOT EXISTS monitor_checks_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS monitor_checks (
+		id          INTEGER PRIMARY KEY DEFAULT nextval('monitor_checks_seq'),
+		site_id     INTEGER NOT NULL,
+		status      INTEGER NOT NULL DEFAULT 0,
+		response_ms INTEGER NOT NULL DEFAULT 0,
+		error       VARCHAR NOT NULL DEFAULT '',
+		checked_at  DOUBLE NOT NULL DEFAULT 0
+	)`,
+	`CREATE TABLE IF NOT EXISTS monitor_ssl (
+		site_id         INTEGER PRIMARY KEY,
+		issuer          VARCHAR NOT NULL DEFAULT '',
+		subject         VARCHAR NOT NULL DEFAULT '',
+		expires_at      DOUBLE NOT NULL DEFAULT 0,
+		days_remaining  INTEGER NOT NULL DEFAULT 0,
+		is_valid        BOOLEAN NOT NULL DEFAULT true,
+		error           VARCHAR NOT NULL DEFAULT '',
+		checked_at      DOUBLE NOT NULL DEFAULT 0
+	)`,
+	`CREATE TABLE IF NOT EXISTS monitor_health (
+		site_id     INTEGER PRIMARY KEY,
+		status      VARCHAR NOT NULL DEFAULT 'unknown',
+		data_json   VARCHAR NOT NULL DEFAULT '{}',
+		checked_at  DOUBLE NOT NULL DEFAULT 0
+	)`,
+	`CREATE TABLE IF NOT EXISTS monitor_domains (
+		site_id         INTEGER PRIMARY KEY,
+		domain          VARCHAR NOT NULL DEFAULT '',
+		registrar       VARCHAR NOT NULL DEFAULT '',
+		expires_at      DOUBLE NOT NULL DEFAULT 0,
+		days_remaining  INTEGER NOT NULL DEFAULT 0,
+		error           VARCHAR NOT NULL DEFAULT '',
+		checked_at      DOUBLE NOT NULL DEFAULT 0
+	)`,
+	`CREATE SEQUENCE IF NOT EXISTS schedule_heartbeats_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS schedule_heartbeats (
+		id           INTEGER PRIMARY KEY DEFAULT nextval('schedule_heartbeats_seq'),
+		command      VARCHAR NOT NULL,
+		mode         VARCHAR NOT NULL DEFAULT 'every',
+		max_gap_m    INTEGER NOT NULL DEFAULT 60,
+		at_time      VARCHAR NOT NULL DEFAULT '',
+		grace_m      INTEGER NOT NULL DEFAULT 15,
+		last_seen_at DOUBLE DEFAULT 0,
+		alerted      BOOLEAN NOT NULL DEFAULT false
+	)`,
+	`CREATE SEQUENCE IF NOT EXISTS notification_channels_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS notification_channels (
+		id      INTEGER PRIMARY KEY DEFAULT nextval('notification_channels_seq'),
+		type    VARCHAR NOT NULL,
+		name    VARCHAR NOT NULL DEFAULT '',
+		config  VARCHAR NOT NULL DEFAULT '{}',
+		enabled BOOLEAN NOT NULL DEFAULT true
+	)`,
+	`CREATE SEQUENCE IF NOT EXISTS alert_rules_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS alert_rules (
+		id          INTEGER PRIMARY KEY DEFAULT nextval('alert_rules_seq'),
+		type        VARCHAR NOT NULL,
+		channel_id  INTEGER NOT NULL,
+		config      VARCHAR NOT NULL DEFAULT '{}',
+		enabled     BOOLEAN NOT NULL DEFAULT true,
+		cooldown_m  INTEGER NOT NULL DEFAULT 5
+	)`,
+	`CREATE SEQUENCE IF NOT EXISTS alert_log_seq START 1`,
+	`CREATE TABLE IF NOT EXISTS alert_log (
+		id       INTEGER PRIMARY KEY DEFAULT nextval('alert_log_seq'),
+		rule_id  INTEGER NOT NULL,
+		message  VARCHAR NOT NULL DEFAULT '',
+		sent_at  DOUBLE NOT NULL DEFAULT 0
+	)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.Exec(stmt); err != nil {
