@@ -186,11 +186,19 @@ class Wiretap
     public static function shouldIgnore(string $group, string $value): bool
     {
         $patterns = config("wiretap.{$group}.ignore", []);
+        return static::matchesIgnorePatterns($value, $patterns);
+    }
+
+    /**
+     * Check if a value matches any of the given ignore patterns.
+     * Pure function — no Laravel dependencies.
+     */
+    public static function matchesIgnorePatterns(string $value, array $patterns): bool
+    {
         foreach ($patterns as $pattern) {
             if ($pattern === $value) {
                 return true;
             }
-            // Wildcard matching: horizon:* matches horizon:work, horizon:pause, etc.
             if (str_contains($pattern, '*') && fnmatch($pattern, $value)) {
                 return true;
             }
@@ -210,10 +218,24 @@ class Wiretap
     public static function filterData(string $type, array $data, string $subKey, ?string $identifier = null): ?array
     {
         $filter = config("wiretap.{$type}.{$subKey}", 'all');
+        $overrides = config("wiretap.{$type}.overrides", []);
 
-        // Check per-item overrides (e.g. views.overrides)
+        return static::applyDataFilter($data, $filter, $overrides, $identifier);
+    }
+
+    /**
+     * Apply a data filter to an array.
+     * Pure function — no Laravel dependencies.
+     *
+     * @param  array       $data       The raw data to filter
+     * @param  mixed       $filter     'all', 'none', 'keys', or ['field1', 'field2']
+     * @param  array       $overrides  Per-identifier overrides (e.g. ['dashboard' => 'all'])
+     * @param  string|null $identifier Optional identifier for override matching
+     * @return array|null  Filtered data, array of keys, or null ('none')
+     */
+    public static function applyDataFilter(array $data, mixed $filter, array $overrides = [], ?string $identifier = null): ?array
+    {
         if ($identifier !== null) {
-            $overrides = config("wiretap.{$type}.overrides", []);
             foreach ($overrides as $pattern => $override) {
                 if ($pattern === $identifier || (str_contains($pattern, '*') && fnmatch($pattern, $identifier))) {
                     $filter = $override;
@@ -234,7 +256,6 @@ class Wiretap
             return array_intersect_key($data, array_flip($filter));
         }
 
-        // 'all' or any other value
         return $data;
     }
 
@@ -257,10 +278,18 @@ class Wiretap
 
     public static function maskSensitive(array $data): array
     {
-        $fields = config('wiretap.mask_fields', []);
+        return static::maskFields($data, config('wiretap.mask_fields', []));
+    }
+
+    /**
+     * Mask sensitive fields in data recursively.
+     * Pure function — no Laravel dependencies.
+     */
+    public static function maskFields(array $data, array $fields): array
+    {
         foreach ($data as $key => &$value) {
             if (is_array($value)) {
-                $value = static::maskSensitive($value);
+                $value = static::maskFields($value, $fields);
             } elseif (in_array(strtolower($key), $fields, true)) {
                 $value = '***';
             }

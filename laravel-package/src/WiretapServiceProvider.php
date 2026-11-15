@@ -280,7 +280,7 @@ class WiretapServiceProvider extends ServiceProvider
             $msg = $event->message;
 
             $mailable = $event->data['__laravel_notification'] ?? null;
-            if ($mailable !== null && Wiretap::shouldIgnore('mail', get_class($mailable))) return;
+            if ($mailable !== null && Wiretap::shouldIgnore('mail', is_object($mailable) ? get_class($mailable) : (string) $mailable)) return;
 
             // Extract full email content for Wiretap mail viewer
             $html = '';
@@ -342,7 +342,7 @@ class WiretapServiceProvider extends ServiceProvider
             Wiretap::send('notification.sending', [
                 'channel' => $event->channel,
                 'class' => get_class($event->notification),
-                'notifiable' => get_class($event->notifiable),
+                'notifiable' => is_object($event->notifiable) ? get_class($event->notifiable) : (string) $event->notifiable,
             ]);
         });
 
@@ -353,7 +353,7 @@ class WiretapServiceProvider extends ServiceProvider
             $data = [
                 'channel' => $event->channel,
                 'class' => get_class($event->notification),
-                'notifiable' => get_class($event->notifiable),
+                'notifiable' => is_object($event->notifiable) ? get_class($event->notifiable) : (string) $event->notifiable,
             ];
 
             // Capture notification properties (constructor args)

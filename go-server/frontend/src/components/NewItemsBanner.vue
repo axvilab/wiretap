@@ -29,6 +29,7 @@ useWebSocket((event: WSEvent) => {
     if (!props.types.includes(event.data.type)) return
   }
 
+
   // Filter by exception if specified
   if (props.exceptionsOnly && !event.data.has_exception) return
 

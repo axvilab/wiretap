@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -53,6 +54,10 @@ func (m *HealthMonitor) checkAll(ctx context.Context) {
 
 func (m *HealthMonitor) checkSite(ctx context.Context, site storage.MonitorSite) {
 	healthURL := site.HealthURL
+	// If health URL is a path, prepend the site URL
+	if len(healthURL) > 0 && healthURL[0] == '/' {
+		healthURL = strings.TrimRight(site.URL, "/") + healthURL
+	}
 
 	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

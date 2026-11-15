@@ -878,16 +878,16 @@ Tasks:
          go get github.com/emersion/go-smtp
          go get github.com/jhillyerd/enmime
 
-[ ] 3.2  Create internal/smtp/server.go:
+[x] 3.2  Create internal/smtp/server.go:
          - StartSMTPServer(addr, storage) — listens on :1025
          - AllowInsecureAuth = true (local dev)
          - MaxMessageBytes = 25MB
 
-[ ] 3.3  Create internal/smtp/session.go:
+[x] 3.3  Create internal/smtp/session.go:
          - Implement smtp.Session interface: Mail(), Rcpt(), Data(), Reset(), Logout()
          - In Data(): read raw email bytes, parse with enmime
 
-[ ] 3.4  Create internal/smtp/parser.go:
+[x] 3.4  Create internal/smtp/parser.go:
          - ExtractEmail(raw []byte) → Email struct
          - Parse: from, to, cc, subject, html, text, headers
          - Extract attachments: name, size, content_type, bytes
@@ -1195,16 +1195,16 @@ docker exec -it test-app php artisan wiretap:generate-traffic --requests=200
 
 Tasks:
 ```
-[ ] 5.1  Create Redis driver in PHP package:
+[x] 5.1  Create Redis driver in PHP package:
          - src/Drivers/RedisDriver.php
          - Uses Redis::lpush('wiretap:events', $payload)
          
-[ ] 5.2  Create Redis receiver in Go:
+[x] 5.2  Create Redis receiver in Go:
          - internal/receiver/redis.go
          - BRPOP loop reading from wiretap:events
          - Parse JSON, feed to same pipeline as HTTP receiver
          
-[ ] 5.3  Config: driver selection (http | redis) in both PHP and Go
+[x] 5.3  Config: driver selection (http | redis) in both PHP and Go
 
 [x] 5.4  Implement retention cleanup:
          - Goroutine running every hour
@@ -1284,12 +1284,12 @@ Tasks:
          - Basic auth middleware in Go
          - Configured via wiretap.yml
 
-[ ] 7.3  Alerts — Slack:
+[x] 7.3  Alerts — Slack:
          - internal/notifications/slack.go
          - Webhook URL in config
          - Alert rules: exception_spike, slow_endpoint, job_failure_rate
 
-[ ] 7.4  Alerts — Telegram:
+[x] 7.4  Alerts — Telegram:
          - internal/notifications/telegram.go
          - Bot token + chat_id in config
 
