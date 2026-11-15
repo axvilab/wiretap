@@ -1,0 +1,17 @@
+# Packagist installs axvi/wiretap-laravel from this repository's root.
+# Only the PHP package goes into the Composer archive; the rest stays out.
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/CLAUDE.md export-ignore
+/Makefile export-ignore
+/docker-compose.yml export-ignore
+/docs export-ignore
+/go-server export-ignore
+/test-apps export-ignore
+/tests export-ignore
+/laravel-package/.gitignore export-ignore
+/laravel-package/composer.json export-ignore
+/laravel-package/composer.lock export-ignore
+/laravel-package/phpunit.xml export-ignore
+/laravel-package/tests export-ignore
