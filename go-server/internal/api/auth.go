@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/axvi/wiretap/internal/config"
@@ -32,6 +33,13 @@ func (am *authManager) isAuthEnabled() bool {
 func (am *authManager) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+
+		// The UI itself (HTML, JS, CSS) is public so the browser can show the login form;
+		// all data goes through /api, which stays protected.
+		if !strings.HasPrefix(path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		// Always allow auth endpoints and health
 		if path == "/api/auth/login" || path == "/api/auth/status" || path == "/api/health" {

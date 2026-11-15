@@ -135,6 +135,25 @@ func TestMiddlewareBlocksWithPassword(t *testing.T) {
 	}
 }
 
+func TestMiddlewareServesUIWithoutLogin(t *testing.T) {
+	store := testStore(t)
+	am := newAuthManager(store, testConfig("secret"))
+
+	handler := am.middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	}))
+
+	for _, path := range []string{"/", "/requests", "/assets/index.js"} {
+		req := httptest.NewRequest("GET", path, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200 for UI path %s with password set, got %d", path, w.Code)
+		}
+	}
+}
+
 func TestMiddlewareAllowsWithCookie(t *testing.T) {
 	store := testStore(t)
 	am := newAuthManager(store, testConfig("secret"))
