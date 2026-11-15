@@ -61,7 +61,7 @@ export interface Email {
   subject: string
   html: string
   text: string
-  attachments: { name: string; content_type: string; size: number }[]
+  attachments: { index: number; name: string; content_type: string; size: number }[]
   raw_size: number
   trace_rid: string
   created_at: number

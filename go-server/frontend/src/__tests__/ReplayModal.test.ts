@@ -49,7 +49,7 @@ describe('ReplayModal', () => {
     expect(wrapper.text()).toContain('Replay Job')
     expect(wrapper.text()).toContain('Properties (JSON)')
     const classInput = wrapper.find('input[readonly]')
-    expect(classInput.element.value).toBe('App\\Jobs\\Test')
+    expect((classInput.element as HTMLInputElement).value).toBe('App\\Jobs\\Test')
   })
 
   it('renders job retry form for failed without payload', async () => {
