@@ -22,11 +22,14 @@ jobs:
       run:
         working-directory: go-server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go-server/go.mod
           cache-dependency-path: go-server/go.sum
+      # The UI is embedded with go:embed; tests do not need a real build.
+      - name: Placeholder UI build
+        run: mkdir -p frontend/dist && touch frontend/dist/.keep
       - name: Vet
         run: go vet ./...
       - name: Test
@@ -39,8 +42,8 @@ jobs:
       run:
         working-directory: go-server/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -59,7 +62,7 @@ jobs:
       matrix:
         laravel: ["^12.0", "^13.0"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
