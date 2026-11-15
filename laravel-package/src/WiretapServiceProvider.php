@@ -54,16 +54,17 @@ class WiretapServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (! config('wiretap.enabled', false)) {
-            return;
-        }
-
+        // Publishing and setup commands work before Wiretap is switched on.
         $this->publishes([
             __DIR__ . '/../config/wiretap.php' => config_path('wiretap.php'),
         ], 'wiretap-config');
 
         if ($this->app->runningInConsole()) {
             $this->commands([GenerateReplaySecretCommand::class]);
+        }
+
+        if (! config('wiretap.enabled', false)) {
+            return;
         }
 
         /** @var \Illuminate\Foundation\Http\Kernel $kernel */
