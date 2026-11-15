@@ -55,7 +55,7 @@ wiretap/
 - **Vitest** + **@vue/test-utils** — testing
 
 ### PHP Package (laravel-package/)
-- **PHP 8.2+**, **Laravel 11/12/13**
+- **PHP 8.2+**, **Laravel 12/13**
 - Zero-config via auto-discovery
 - 18 listeners: queries, exceptions, jobs, cache, mail, notifications, http client, transactions, auth, commands, schedule, gate, var dumper, validation, broadcasts, logs, models, views
 - `wiretap()` helper — silent debug helper, sends values to Wiretap without output
@@ -220,14 +220,14 @@ make release             # Build frontend + Docker image
 - **Go**: 46+ tests (storage, analyzer, API handlers, auth, sessions, ingest key, replay, dashboard)
 - **PHP**: 119+ tests (all 18 listeners, wiretap() helper, filterData, per-type config, ignore patterns, replay, validation, masking)
 - **Vitest**: 45+ tests (API layer, NewItemsBanner, ReplayModal, Login)
-- **Laravel compatibility**: tested on Laravel 11, 12, 13
+- **Laravel compatibility**: tested on Laravel 12 and 13
 
 ## Important Notes
 
 - Always run `make go-test` after modifying Go code
 - Frontend Vite dev server (`:5173`) proxies API calls to Go server — both containers must be running
 - DuckDB file is single-writer — no concurrent write connections
-- PHP package supports Laravel 11, 12, and 13 (PHP 8.2+)
+- PHP package supports Laravel 12 and 13 (PHP 8.2+)
 - Never install Go/Node/PHP locally — use `make *-sh` to get into containers
 - `.env` file in project root for docker-compose env vars (WIRETAP_PASSWORD, WIRETAP_REPLAY_SECRET)
 - `.env` is in .gitignore — contains secrets

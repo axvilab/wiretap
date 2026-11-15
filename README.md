@@ -219,7 +219,7 @@ volumes:
 - **Go 1.25+** — server, DuckDB storage, SMTP, WebSocket, monitoring
 - **Vue 3 + TypeScript** — embedded SPA with Vite, TailwindCSS v4, ECharts
 - **DuckDB** — embedded columnar OLAP database
-- **PHP 8.2+ / Laravel 11–13** — event collector package
+- **PHP 8.2+ / Laravel 12–13** — event collector package
 
 ## License
 

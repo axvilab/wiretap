@@ -1,13 +1,13 @@
 {
     "name": "axvi/wiretap-compatibility-tests",
-    "description": "Compatibility tests for wiretap-laravel against Laravel 11/12/13",
+    "description": "Compatibility tests for wiretap-laravel against Laravel 12/13",
     "type": "project",
     "require": {
         "php": "^8.2",
         "axvi/wiretap-laravel": "@dev"
     },
     "require-dev": {
-        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "orchestra/testbench": "^10.0|^11.0",
         "phpunit/phpunit": "^10.0|^11.0"
     },
     "autoload-dev": {

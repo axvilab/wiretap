@@ -12,7 +12,7 @@ For full documentation, screenshots, and feature overview visit **[axvi.dev/wire
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11, 12, or 13
+- Laravel 12 or 13
 - Running [Wiretap server](https://github.com/axvi/wiretap) (Docker)
 
 ## Installation
@@ -249,7 +249,7 @@ For full server documentation, see [Wiretap on GitHub](https://github.com/axvi/w
 composer test
 ```
 
-119+ tests covering all 18 listeners, `wiretap()` helper, `filterData`, per-type config, ignore patterns, replay, validation, and field masking. Tested on Laravel 11, 12, and 13.
+119+ tests covering all 18 listeners, `wiretap()` helper, `filterData`, per-type config, ignore patterns, replay, validation, and field masking. Tested on Laravel 12 and 13.
 
 ## License
 
