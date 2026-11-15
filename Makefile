@@ -77,6 +77,6 @@ test-all:
 # === Release ===
 release:
 	docker compose exec frontend npm run build
-	docker build -t axvi/wiretap ./go-server
+	docker build -t ghcr.io/axvilab/wiretap ./go-server
 
 .PHONY: up down logs logs-wiretap logs-frontend go-test go-build go-sh ui-build ui-sh app-setup-12 app-setup-13 app-setup app-sh-12 app-sh-13 traffic-12 traffic-13 traffic-all php-test test-all release

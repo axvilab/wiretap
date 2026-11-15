@@ -3,17 +3,17 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/axvi/wiretap-laravel.svg)](https://packagist.org/packages/axvi/wiretap-laravel)
 [![License](https://img.shields.io/packagist/l/axvi/wiretap-laravel.svg)](https://packagist.org/packages/axvi/wiretap-laravel)
 
-Lightweight event collector for [Wiretap](https://axvi.dev/wiretap) — a self-hosted application inspector and monitoring platform for Laravel.
+Lightweight event collector for [Wiretap](https://axvi.dev/projects/wiretap) — a self-hosted application inspector and monitoring platform for Laravel.
 
 There are excellent tools in the Laravel ecosystem — Telescope, Pulse, Horizon, Ray, and many others. They are well-designed, battle-tested, and loved by the community. But sometimes you need a **private, self-hosted solution** where all your application data stays on your own infrastructure. Wiretap fills that gap — one Docker container that covers application inspection, email testing, performance analysis, and site monitoring.
 
-For full documentation, screenshots, and feature overview visit **[axvi.dev/wiretap](https://axvi.dev/wiretap)**.
+For full documentation, screenshots, and feature overview visit **[axvi.dev/projects/wiretap](https://axvi.dev/projects/wiretap)**.
 
 ## Requirements
 
 - PHP 8.2+
 - Laravel 12 or 13
-- Running [Wiretap server](https://github.com/axvi/wiretap) (Docker)
+- Running [Wiretap server](https://github.com/axvilab/wiretap) (Docker)
 
 ## Installation
 
@@ -232,7 +232,7 @@ docker run -d \
   -p 9090:9090 \
   -p 1025:1025 \
   -v wiretap_data:/data \
-  axvi/wiretap
+  ghcr.io/axvilab/wiretap
 ```
 
 | Port | Purpose |
@@ -241,7 +241,7 @@ docker run -d \
 | 9090 | Ingest API (receives events from this package) |
 | 1025 | SMTP server (email interception for dev environments) |
 
-For full server documentation, see [Wiretap on GitHub](https://github.com/axvi/wiretap).
+For full server documentation, see [Wiretap on GitHub](https://github.com/axvilab/wiretap).
 
 ## Testing
 

@@ -4,7 +4,7 @@ Self-hosted application inspector and monitoring platform for Laravel.
 
 There are many excellent tools in the Laravel ecosystem — Telescope, Pulse, Horizon, Ray, Clockwork, Flare, Mailpit, Oh Dear. They are well-designed, battle-tested, and loved by the community. But sometimes you need everything in one place, running on your own infrastructure, with full control over your data. Wiretap is built for that — a single Docker container that covers application inspection, email testing, performance analysis, and site monitoring.
 
-For full documentation, screenshots, and feature overview visit **[axvi.dev/wiretap](https://axvi.dev/wiretap)**.
+For full documentation, screenshots, and feature overview visit **[axvi.dev/projects/wiretap](https://axvi.dev/projects/wiretap)**.
 
 ## How It Works
 
@@ -21,7 +21,7 @@ For full documentation, screenshots, and feature overview visit **[axvi.dev/wire
 ```
 
 Two components:
-- **Docker image** (`axvi/wiretap`) — receiver, DuckDB storage, analyzer, REST API, embedded Vue UI, SMTP server, monitoring, notifications
+- **Docker image** (`ghcr.io/axvilab/wiretap`) — receiver, DuckDB storage, analyzer, REST API, embedded Vue UI, SMTP server, monitoring, notifications
 - **PHP package** (`axvi/wiretap-laravel`) — lightweight event collector, zero-config, auto-discovery
 
 ## Quick Start
@@ -35,7 +35,7 @@ docker run -d \
   -p 9090:9090 \
   -p 1025:1025 \
   -v wiretap_data:/data \
-  axvi/wiretap
+  ghcr.io/axvilab/wiretap
 ```
 
 ### 2. Install the Laravel package
@@ -187,7 +187,7 @@ WIRETAP_REDIS_ADDR=redis:6379
 ```yaml
 services:
   wiretap:
-    image: axvi/wiretap
+    image: ghcr.io/axvilab/wiretap
     ports:
       - "8080:8080"
       - "9090:9090"
