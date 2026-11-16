@@ -221,6 +221,13 @@ volumes:
 - **DuckDB** — embedded columnar OLAP database
 - **PHP 8.2+ / Laravel 12–13** — event collector package
 
+## From the author
+
+Curious about Rust? I wrote two books for Laravel developers:
+[Rust for Laravel Developers](https://leanpub.com/rust-for-laravel-developers) and
+[Loco for Laravel Developers](https://leanpub.com/loco-for-laravel-developers).
+More tools and posts on [axvi.dev](https://axvi.dev).
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
